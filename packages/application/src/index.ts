@@ -605,7 +605,12 @@ export class AgentFlowApplication {
     const removed: string[] = [];
     const errors: string[] = [];
     for (const workspace of this.workspaces.values()) {
-      if (["Released", "Orphaned"].includes(workspace.status)) {
+      // "Released" means the worktree was already removed by a prior call --
+      // reprocessing it here would just retry `git worktree remove` against a
+      // path that no longer exists, failing every time and, since
+      // workspaces are never pruned from this map, doing so again on every
+      // future restart for the lifetime of the installation.
+      if (workspace.status === "Orphaned") {
         const task = this.tasks.get(workspace.taskId);
         const run = workspace.ownerRunId ? this.runs.get(workspace.ownerRunId) : undefined;
         const terminal = task && ["Integrated", "Failed", "Cancelled"].includes(task.state);

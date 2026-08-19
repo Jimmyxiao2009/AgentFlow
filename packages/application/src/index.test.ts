@@ -61,6 +61,39 @@ describe("application recovery", () => {
     second.close();
     rmSync(root, { recursive: true, force: true });
   });
+
+  it("does not retry removing an already-released worktree on every restart", async () => {
+    const root = mkdtempSync(join(tmpdir(), "agentflow-released-worktree-"));
+    const dataDirectory = join(root, "data");
+    const first = new AgentFlowApplication({ dataDirectory });
+    first.store.saveProjection("project:p1", 1, {
+      id: "p1",
+      name: "demo",
+      // Deliberately not a Git repository, so an attempted `git worktree
+      // remove` here fails loudly instead of silently no-op'ing.
+      repositoryPath: root,
+      defaultBranch: "main",
+      createdAt: "2025-01-01T00:00:00.000Z",
+      updatedAt: "2025-01-01T00:00:00.000Z",
+    });
+    first.store.saveProjection("workspace:w1", 1, {
+      id: "w1",
+      projectId: "p1",
+      changeRequestId: "cr1",
+      taskId: "t1",
+      path: join(root, "already-removed-worktree"),
+      branch: "agentflow/cr1/TASK-001/run1",
+      baseCommit: "0000000000000000000000000000000000000000",
+      status: "Released",
+    });
+    first.close();
+    const second = new AgentFlowApplication({ dataDirectory });
+    const result = await second.cleanupOrphanedWorktrees();
+    expect(result.removed).toEqual([]);
+    expect(result.errors).toEqual([]);
+    second.close();
+    rmSync(root, { recursive: true, force: true });
+  });
 });
 
 describe("application permissions", () => {
