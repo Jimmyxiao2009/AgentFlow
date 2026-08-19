@@ -96,6 +96,92 @@ describe("application recovery", () => {
   });
 });
 
+describe("application settings security", () => {
+  it("redacts provider API keys from the audit log when settings are saved", () => {
+    const root = mkdtempSync(join(tmpdir(), "agentflow-settings-audit-"));
+    const app = new AgentFlowApplication({ dataDirectory: root });
+    const secret = "sk-test-supersecret-key-1234567890";
+    app.saveSettings({
+      settings: {
+        schemaVersion: 2,
+        theme: "Dark",
+        accent: "Blue",
+        locale: "en-US",
+        workerCount: 2,
+        restoreWorkspace: true,
+        confirmClose: true,
+        autoProbe: false,
+        manualModels: [],
+        aiProviders: [
+          { id: "p1", name: "Test Provider", endpoint: "https://example.com/v1", apiKey: secret },
+        ],
+        recentLimit: "10",
+        defaultProjectDirectory: "",
+        editor: "VS Code",
+        density: "Comfortable",
+        uiTextSize: "Default",
+        codeTextSize: "13",
+        timestampFormat: "Relative",
+        retries: "1",
+        planApproval: "Always ask",
+        blockOnFailingValidation: true,
+        requireIndependentReviewer: true,
+        integrationPolicy: "Manual",
+        concurrencyLimit: "2",
+        allowRiskOverrides: false,
+        requireApprovalNetwork: true,
+        requireApprovalPackages: true,
+        customPermissionDimensions: {
+          readPaths: ["**/*"],
+          writePaths: [],
+          protectedPaths: [".git", ".env", ".ssh", "main", "master"],
+          commands: ["git status", "git diff", "git log", "git show"],
+          network: false,
+          packageInstall: false,
+          dependencyChanges: false,
+          projectFileChanges: false,
+          externalProcesses: false,
+          environmentAccess: "none",
+          secretAccess: false,
+          clipboard: false,
+          browser: false,
+          externalDirectories: false,
+          remoteGit: false,
+        },
+        pushPolicy: "Ask each time",
+        inAppNotif: true,
+        systemNotif: true,
+        soundNotif: false,
+        notifPlanApproval: true,
+        notifAgentFailure: true,
+        notifBlockedTask: true,
+        notifReviewComplete: true,
+        notifValidationComplete: false,
+        notifIntegrationReady: true,
+        retentionDays: 30,
+        reducedMotion: false,
+        highContrastFocus: false,
+        screenReaderAnnouncements: true,
+      },
+    });
+    // The audit trail must record that settings changed without retaining the
+    // raw API key. Query the audit_events table directly (the sidecar's own
+    // storage) to assert the secret never reached durable audit history.
+    const auditRows = (
+      app.store as unknown as {
+        db: { prepare: (sql: string) => { all: () => Array<{ detail: string }> } };
+      }
+    ).db.prepare("SELECT detail FROM audit_events").all();
+    const auditText = auditRows.map((row) => row.detail).join("\n");
+    expect(auditText).not.toContain(secret);
+    expect(auditText).toContain("[REDACTED]");
+    // The live settings projection still holds the key for the sidecar's own use.
+    expect(app.getSettings().aiProviders[0]?.apiKey).toBe(secret);
+    app.close();
+    rmSync(root, { recursive: true, force: true });
+  });
+});
+
 describe("application permissions", () => {
   it("keeps manually configured models explicit and unverified", async () => {
     const root = mkdtempSync(join(tmpdir(), "agentflow-manual-model-"));

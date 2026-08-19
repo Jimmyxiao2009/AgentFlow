@@ -32,6 +32,7 @@ import {
   relativeTime,
   runtimeSettingsToUi,
   resolveUiLocale,
+  settingsWithoutSecrets,
   uiSettingsToRuntime,
   localizedStatus,
 } from "./utils";
@@ -560,7 +561,14 @@ export default function AgentFlowWorkspace() {
 
   useEffect(() => {
     try {
-      window.localStorage.setItem("agentflow.settings.v1", JSON.stringify(settings));
+      // Never persist provider API keys to localStorage — the renderer is the
+      // less-trusted boundary and must not retain secrets (docs/security.md).
+      // The sidecar owns the live key; the renderer only needs the rest of the
+      // view state to restore its UI between reloads.
+      window.localStorage.setItem(
+        "agentflow.settings.v1",
+        JSON.stringify(settingsWithoutSecrets(settings)),
+      );
     } catch {
       /* storage is optional */
     }
@@ -577,24 +585,31 @@ export default function AgentFlowWorkspace() {
     }
   }, [pinnedConversationIds]);
 
+  // Debounced settings sync to the sidecar: previously every keystroke fired a
+  // full IPC round-trip (saveSettings + status) and re-sent the entire settings
+  // blob including any in-progress apiKey edit. Coalescing to a trailing 400ms
+  // debounce cuts the round-trips and avoids persisting half-typed secrets.
   useEffect(() => {
     if (!bridge || !settingsHydratedRef.current) return;
     let cancelled = false;
-    void bridge
-      .saveSettings(uiSettingsToRuntime(settings))
-      .then(() => bridge.status())
-      .then((status) => {
-        if (!cancelled) setRuntimeData(status);
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          setLocalizedRuntimeState("Runtime.RequestFailed", {
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
-      });
+    const handle = window.setTimeout(() => {
+      void bridge
+        .saveSettings(uiSettingsToRuntime(settings))
+        .then(() => bridge.status())
+        .then((status) => {
+          if (!cancelled) setRuntimeData(status);
+        })
+        .catch((error) => {
+          if (!cancelled) {
+            setLocalizedRuntimeState("Runtime.RequestFailed", {
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+        });
+    }, 400);
     return () => {
       cancelled = true;
+      window.clearTimeout(handle);
     };
   }, [bridge, settings]);
 

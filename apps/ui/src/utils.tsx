@@ -524,3 +524,17 @@ export function localizedStatus(locale: Locale, state: string) {
   };
   return t(locale, keys[state] || state);
 }
+
+/**
+ * Returns a shallow copy of the settings with provider API keys blanked.
+ * Used when persisting UI-only state to localStorage: the renderer must never
+ * store secrets (docs/security.md). The live key is owned by the sidecar
+ * projection and is re-sent on save; the renderer's local cache does not need
+ * it and must not retain it.
+ */
+export function settingsWithoutSecrets(settings: UiSettings): UiSettings {
+  return {
+    ...settings,
+    aiProviders: settings.aiProviders.map((provider) => ({ ...provider, apiKey: "" })),
+  };
+}

@@ -37,7 +37,7 @@ import {
   effectivePermissions,
   isPermanentlyDenied,
 } from "@agentflow/permission-engine";
-import { lines, Logger, ProcessSupervisor, redactSecrets } from "@agentflow/process-supervisor";
+import { lines, Logger, ProcessSupervisor, redactSecrets, redactStructured } from "@agentflow/process-supervisor";
 import { parseMethodPayload, type AdapterEvent } from "@agentflow/protocol";
 import { route } from "@agentflow/routing-engine";
 import {
@@ -744,12 +744,16 @@ export class AgentFlowApplication {
     const input = parseMethodPayload("settings.save", payload);
     this.settings = migrateSettings(input.settings);
     this.store.saveProjection("settings:global", this.settings.schemaVersion, this.settings);
+    // Never persist raw credentials to the append-only audit log — redact
+    // apiKey-shaped fields so the audit trail records that settings changed
+    // without retaining the secret. The projection above keeps the live key
+    // for the sidecar's own use; the audit trail does not need it.
     this.store.appendAudit({
       id: id("audit"),
       actor: "user",
       action: "settings.updated",
       target: "settings:global",
-      detail: JSON.stringify(this.settings),
+      detail: JSON.stringify(redactStructured(this.settings)),
       timestamp: now(),
     });
     return this.getSettings();
