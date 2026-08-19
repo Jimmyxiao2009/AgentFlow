@@ -2685,6 +2685,8 @@ export class AgentFlowApplication {
     const validations = [...this.validationRuns.values()].filter(
       (run) => run.patchSetId === patchSet.id,
     );
+    if (validations.length === 0)
+      throw new Error(`PatchSet ${patchSet.id} has no validation runs; run validation before review`);
     assertDeterministicGate(validations);
     const reviewerRunId = id("run");
     if (reviewerRunId === patchSet.producingRunId)

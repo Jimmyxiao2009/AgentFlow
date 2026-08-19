@@ -281,4 +281,112 @@ describe("isolated worker vertical slice", () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it("does not let a sibling path escape an 'src/**' allowed-write rule", async () => {
+    const root = mkdtempSync(join(tmpdir(), "agentflow-glob-boundary-"));
+    const repository = join(root, "repo");
+    const dataRoot = join(root, "data");
+    mkdirSync(repository, { recursive: true });
+    mkdirSync(dataRoot, { recursive: true });
+    writeFileSync(join(repository, "README.md"), "fixture\n");
+    const gitRun = (args: string[]) =>
+      execFileSync("git", args, { cwd: repository, stdio: "ignore" });
+    gitRun(["init", "-q"]);
+    gitRun(["config", "user.name", "AgentFlow Fixture"]);
+    gitRun(["config", "user.email", "fixture@example.invalid"]);
+    gitRun(["add", "README.md"]);
+    gitRun(["commit", "-qm", "fixture"]);
+    const base = (await git(repository, ["rev-parse", "HEAD"])).stdout.trim();
+    const manager = new WorktreeManager({ dataRoot });
+    const task: Task = {
+      id: "task-glob",
+      changeRequestId: "cr-glob",
+      key: "TASK-001",
+      title: "Fixture write",
+      state: "Running",
+      contract: {
+        objective: "write fixture",
+        dependencies: [],
+        allowedReadPaths: ["**/*"],
+        // "src/**" must match src/foo.ts but NOT srcfoo/evil.ts — the previous
+        // startsWith("src") prefix check accepted the unrelated sibling.
+        allowedWritePaths: ["src/**"],
+        forbiddenPaths: [".git"],
+        requiredCapabilities: ["worktree"],
+        acceptanceCriteria: ["file exists"],
+        requiredValidationCommands: [],
+        preferredExecutorRoles: ["Worker"],
+        riskLevel: "Low",
+      },
+      dependencyIds: [],
+      patchSetIds: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    const run: AgentRun = {
+      id: "run-glob",
+      sessionId: "session-glob",
+      conversationId: "conversation-glob",
+      taskId: task.id,
+      role: "Worker",
+      state: "Running",
+      attempt: 1,
+    };
+    const session: AgentSession = {
+      id: "session-glob",
+      conversationId: run.conversationId,
+      taskId: task.id,
+      adapterId: "fake",
+      role: "Worker",
+      state: "Running",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    const workspace = await manager.create(repository, {
+      id: "workspace-glob",
+      projectId: "project-glob",
+      changeRequestId: "cr-glob",
+      taskId: task.id,
+      branch: "agentflow/fixture-glob",
+      baseCommit: base,
+      taskKey: task.key,
+      runId: run.id,
+    });
+    // A worker writing to a path that merely starts with "src" (no path
+    // separator) must be rejected as out of contract.
+    const adapter = new FakeAdapter({
+      delayMs: 0,
+      writeFiles: [{ path: "srcfoo/evil.ts", content: "// escaped\n" }],
+    });
+    await adapter.startSession(
+      {
+        sessionId: session.id,
+        conversationId: session.conversationId,
+        taskId: task.id,
+        role: "Worker",
+        workspacePath: workspace.path,
+        profile: { id: "fixture", name: "Fake", adapterId: "fake", status: "Ready" },
+        permissionProfile: "Workspace Write",
+      },
+      new AbortController().signal,
+    );
+    const orchestrator = new WorkflowOrchestrator(manager, { append: () => {} });
+    try {
+      await expect(
+        orchestrator.execute(
+          adapter,
+          { task, run, session, workspace },
+          {
+            prompt: task.contract.objective,
+            mode: "Implement",
+            permissionProfile: "Workspace Write",
+          },
+          new AbortController().signal,
+        ),
+      ).rejects.toThrow("PatchSet changed a path outside the task contract: srcfoo/evil.ts");
+    } finally {
+      await manager.remove(repository, workspace.path);
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
 });

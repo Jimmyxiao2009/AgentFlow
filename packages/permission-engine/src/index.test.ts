@@ -15,6 +15,26 @@ describe("permission engine", () => {
   });
   it("permanently denies credential access", () =>
     expect(isPermanentlyDenied({ secretAccess: true })).toBeTruthy());
+  it("permanently denies .env.local and other .env.* credential variants", () => {
+    expect(isPermanentlyDenied({ path: ".env.local" })).toBeTruthy();
+    expect(isPermanentlyDenied({ path: ".env.production" })).toBeTruthy();
+    expect(isPermanentlyDenied({ path: "server/.env.local" })).toBeTruthy();
+    expect(isPermanentlyDenied({ path: ".env" })).toBeTruthy();
+    // A non-credential file that merely starts with ".env" must not be denied.
+    expect(isPermanentlyDenied({ path: ".environment-config.json" })).toBeFalsy();
+  });
+  it("permanently denies force-push in every spelling, including the short flag", () => {
+    expect(isPermanentlyDenied({ remoteGit: true, command: "git push --force" })).toBeTruthy();
+    expect(isPermanentlyDenied({ remoteGit: true, command: "git push -f" })).toBeTruthy();
+    expect(
+      isPermanentlyDenied({ remoteGit: true, command: "git push --force-with-lease" }),
+    ).toBeTruthy();
+    expect(
+      isPermanentlyDenied({ remoteGit: true, command: "git push origin main --force" }),
+    ).toBeTruthy();
+    // A normal push is not a force-push and is governed elsewhere, not here.
+    expect(isPermanentlyDenied({ remoteGit: true, command: "git push origin main" })).toBeFalsy();
+  });
   it("does not allow an elevated request under a read-only upper bound", () => {
     const profiles = builtInPermissionProfiles();
     const readOnly = profiles.find((item) => item.name === "Read Only")!;

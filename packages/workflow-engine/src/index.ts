@@ -162,8 +162,18 @@ export function createPatchSetRevision(
   });
 }
 export function assertDeterministicGate(validation: ValidationRun[]): void {
-  const blocker = validation.find((run) => run.blocking && run.status === "Failed");
-  if (blocker) throw new Error(`Blocking validation failed: ${blocker.checkName}`);
+  // An empty validation list means no deterministic checks have run. Failing
+  // closed here prevents a PatchSet from reaching review/integration without
+  // any validation evidence — the previous `[].find(...)` was a no-op that
+  // always passed.
+  if (validation.length === 0) throw new Error("At least one validation run is required before review");
+  // A blocking check that did not explicitly pass (Failed OR Skipped OR any
+  // other non-Passed terminal state) must block. The previous predicate only
+  // matched status === "Failed", so a blocking check marked "Skipped" slipped
+  // through the gate.
+  const blocker = validation.find((run) => run.blocking && run.status !== "Passed");
+  if (blocker)
+    throw new Error(`Blocking validation did not pass: ${blocker.checkName} (${blocker.status})`);
 }
 export function assertIndependentReview(implementingRunId: string, reviewerRunId: string): void {
   if (implementingRunId === reviewerRunId)
@@ -424,7 +434,14 @@ export class WorkflowOrchestrator {
       const normalized = file.replaceAll("\\", "/");
       const rule = pattern.replaceAll("\\", "/");
       if (rule === "**/*" || rule === "**") return true;
-      if (rule.endsWith("/**")) return normalized.startsWith(rule.slice(0, -3));
+      // "src/**" must match "src" and "src/foo.ts" but NOT "srcfoo/evil.ts".
+      // The previous startsWith(rule.slice(0,-3)) produced prefix "src" and
+      // thus accepted the unrelated sibling "srcfoo/...", letting a worker
+      // write outside its task contract.
+      if (rule.endsWith("/**")) {
+        const prefix = rule.slice(0, -3);
+        return normalized === prefix || normalized.startsWith(`${prefix}/`);
+      }
       // Support single-level glob: src/*.ts matches src/foo.ts but not src/sub/foo.ts
       if (rule.includes("*")) {
         const regex = new RegExp(
