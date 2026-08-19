@@ -1,6 +1,7 @@
 import React from "react";
 import { t, type Locale } from "@agentflow/localization";
-import type { PermissionDimensionsInput } from "./types";
+import type { AgentFlowSettings } from "@agentflow/config";
+import type { PermissionDimensionsInput, TimelineMessage, UiSettings } from "./types";
 
 export const defaultCustomPermissionDimensions = {
   readPaths: ["**/*"],
@@ -83,7 +84,7 @@ export function permissionProfileLabel(locale: Locale, profileName: string) {
   return t(locale, keys[profileName] || profileName);
 }
 
-export function runtimeSettingsToUi(settings: any) {
+export function runtimeSettingsToUi(settings: Partial<AgentFlowSettings> | null | undefined) {
   if (!settings) return {};
   const localeLabels: Record<string, string> = {
     "en-US": "English (en-US)",
@@ -102,7 +103,7 @@ export function runtimeSettingsToUi(settings: any) {
     autoProbe: settings.autoProbe,
     manualModels: Array.isArray(settings.manualModels)
       ? settings.manualModels.filter(
-          (model: any) =>
+          (model) =>
             model &&
             typeof model.adapterId === "string" &&
             typeof model.providerId === "string" &&
@@ -112,7 +113,7 @@ export function runtimeSettingsToUi(settings: any) {
       : [],
     aiProviders: Array.isArray(settings.aiProviders)
       ? settings.aiProviders.filter(
-          (p: any) =>
+          (p) =>
             p &&
             typeof p.id === "string" &&
             typeof p.name === "string" &&
@@ -178,7 +179,7 @@ export function resolveUiLocale(language: string): Locale {
   return localeByLanguage[language] || "en-US";
 }
 
-export function uiSettingsToRuntime(settings: any) {
+export function uiSettingsToRuntime(settings: UiSettings) {
   const localeByLabel: Record<string, string> = {
     "English (en-US)": "en-US",
     "简体中文 (zh-CN)": "zh-CN",
@@ -207,7 +208,7 @@ export function uiSettingsToRuntime(settings: any) {
     manualModels: Array.isArray(settings.manualModels)
       ? settings.manualModels
           .filter(
-            (model: any) =>
+            (model) =>
               model &&
               typeof model.adapterId === "string" &&
               typeof model.providerId === "string" &&
@@ -215,21 +216,21 @@ export function uiSettingsToRuntime(settings: any) {
               typeof model.name === "string",
           )
           .slice(0, 100)
-          .map((model: any) => ({
+          .map((model) => ({
             adapterId: model.adapterId.trim().slice(0, 100),
             providerId: model.providerId.trim().slice(0, 100),
             modelId: model.modelId.trim().slice(0, 300),
             name: model.name.trim().slice(0, 300),
           }))
           .filter(
-            (model: any) =>
+            (model) =>
               model.adapterId && model.providerId && model.modelId && model.name,
           )
       : [],
     aiProviders: Array.isArray(settings.aiProviders)
       ? settings.aiProviders
           .filter(
-            (p: any) =>
+            (p) =>
               p &&
               typeof p.id === "string" &&
               typeof p.name === "string" &&
@@ -237,7 +238,7 @@ export function uiSettingsToRuntime(settings: any) {
               typeof p.apiKey === "string",
           )
           .slice(0, 50)
-          .map((p: any) => ({
+          .map((p) => ({
             id: p.id.slice(0, 100),
             name: p.name.trim().slice(0, 200),
             endpoint: p.endpoint.trim().slice(0, 4096),
@@ -401,16 +402,16 @@ export function parseSideBySideDiff(content: string) {
   return rows;
 }
 
-export function summarizeActivityGroup(items: any[], locale: Locale) {
-  const finished = (item: any) =>
+export function summarizeActivityGroup(items: TimelineMessage[], locale: Locale) {
+  const finished = (item: TimelineMessage) =>
     item.activity?.status === "completed" || item.activity?.status === "failed";
   const toolCount = items.filter(
-    (item: any) => item.activity?.category === "tool" && finished(item),
+    (item) => item.activity?.category === "tool" && finished(item),
   ).length;
   const commandCount = items.filter(
-    (item: any) => item.activity?.category === "command" && finished(item),
+    (item) => item.activity?.category === "command" && finished(item),
   ).length;
-  const otherCount = items.filter((item: any) => item.activity?.category === "workflow").length;
+  const otherCount = items.filter((item) => item.activity?.category === "workflow").length;
   const parts: string[] = [];
   if (commandCount) parts.push(t(locale, "Activity.RanCommands", { count: commandCount }));
   if (toolCount) parts.push(t(locale, "Activity.UsedTools", { count: toolCount }));

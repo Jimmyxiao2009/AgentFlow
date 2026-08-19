@@ -80,7 +80,7 @@ export default function AgentFlowWorkspace() {
   const [settingsSearch, setSettingsSearch] = useState("");
   const [composerText, setComposerText] = useState("");
   const [contextAttachments, setContextAttachments] = useState([]);
-  const initialTimelineMessages = (() => {
+  const initialTimelineMessages = ((): TimelineMessage[] => {
     const benchmarkFlag =
       typeof window !== "undefined" &&
       new window.URLSearchParams(window.location.search).get("benchmark");

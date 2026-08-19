@@ -23,6 +23,7 @@ export type TimelineMessage = {
   streaming?: boolean;
   kind?: string;
   activity?: {
+    category?: "tool" | "command" | "workflow";
     status?: string;
     title?: string;
     detail?: string;
