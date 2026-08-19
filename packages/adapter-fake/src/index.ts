@@ -19,6 +19,7 @@ export interface FakeAdapterOptions {
   failAfter?: number;
   requestApproval?: boolean;
   approvalRequested?: PermissionProfileName;
+  approvalRaw?: Record<string, unknown>;
   writeFiles?:
     | Array<{ path: string; content: string }>
     | ((request: AgentRequest) => Array<{ path: string; content: string }>);
@@ -76,6 +77,7 @@ export class FakeAdapter implements AgentAdapter {
       failAfter: 0,
       requestApproval: false,
       approvalRequested: "Elevated with Approval",
+      approvalRaw: { fixture: true },
       writeFiles: [],
       reviewFindings: [],
       ...options,
@@ -200,7 +202,11 @@ export class FakeAdapter implements AgentAdapter {
         return;
       }
     }
-    if (this.options.requestApproval)
+    // Planning is always Read Only (see runPlanner()); a real planner
+    // adapter wouldn't ask for elevated permission mid-plan, so the fixture
+    // shouldn't either -- otherwise every requestApproval fixture would also
+    // have to account for the Plan run auto-denying and aborting first.
+    if (this.options.requestApproval && request.mode !== "Plan")
       yield {
         kind: "permission.requested",
         sequence: sequence++,
@@ -211,7 +217,7 @@ export class FakeAdapter implements AgentAdapter {
           reason: "Fixture asks to install a package",
           requested: this.options.approvalRequested,
         },
-        raw: { fixture: true },
+        raw: this.options.approvalRaw,
       };
     const reviewFindings =
       typeof this.options.reviewFindings === "function"

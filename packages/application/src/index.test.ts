@@ -152,4 +152,95 @@ describe("application permissions", () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it("still denies a permanently-denied request even when a human clicks allow", async () => {
+    const root = mkdtempSync(join(tmpdir(), "agentflow-permanent-deny-"));
+    const repository = join(root, "repo");
+    const dataDirectory = join(root, "data");
+    execFileSync("git", ["init", "-q", repository]);
+    execFileSync("git", ["-C", repository, "config", "user.email", "fixture@example.invalid"]);
+    execFileSync("git", ["-C", repository, "config", "user.name", "AgentFlow Fixture"]);
+    writeFileSync(join(repository, "README.md"), "fixture\n");
+    execFileSync("git", ["-C", repository, "add", "."]);
+    execFileSync("git", ["-C", repository, "commit", "-qm", "fixture"]);
+    let resolveApprovalEvent!: (event: unknown) => void;
+    const approval = new Promise<unknown>((resolve) => {
+      resolveApprovalEvent = resolve;
+    });
+    const app = new AgentFlowApplication({
+      dataDirectory,
+      fakeAdapter: new FakeAdapter({
+        delayMs: 0,
+        requestApproval: true,
+        // A Custom profile requesting exactly its own upper-bound dimensions
+        // never "exceeds" the profile-dimension check on its own -- only the
+        // v1 permanent-denial rule (isPermanentlyDenied) can catch this.
+        approvalRequested: "Custom",
+        approvalRaw: { command: "git push --force origin main" },
+      }),
+      eventSink: (event) => {
+        if (event.type === "approval.requested") resolveApprovalEvent(event);
+      },
+    });
+    try {
+      app.saveSettings({
+        settings: {
+          customPermissionDimensions: {
+            readPaths: ["**/*"],
+            writePaths: ["docs/**"],
+            protectedPaths: [".git", ".env", ".ssh", "main", "master"],
+            commands: ["git status", "git diff", "git log", "git show"],
+            network: false,
+            packageInstall: false,
+            dependencyChanges: false,
+            projectFileChanges: false,
+            externalProcesses: false,
+            environmentAccess: "none",
+            secretAccess: false,
+            clipboard: false,
+            browser: false,
+            externalDirectories: false,
+            remoteGit: true,
+          },
+        },
+      });
+      const project = await app.openProject({ repositoryPath: repository });
+      const conversation = app.createConversation({
+        projectId: project.id,
+        title: "Permanent deny test",
+        mode: "Plan",
+      });
+      const plan = await app.sendMessage({
+        conversationId: conversation.id,
+        text: "Implement something",
+        mode: "Plan",
+      });
+      app.approvePlan({ changeRequestId: plan.changeRequestId, action: "approve-and-run" });
+      const task = app
+        .status()
+        .tasks.find(
+          (item) => item.key === "TASK-001" && item.changeRequestId === plan.changeRequestId,
+        )!;
+      const run = app
+        .runTask({ taskId: task.id, permissionProfile: "Custom" })
+        .catch((error: unknown) => error);
+      const event = (await approval) as { payload: { requestId: string } };
+      const requestId = event.payload.requestId;
+      const request = app.status().permissions.find((item) => item.id === requestId);
+      // The Custom profile granted remoteGit itself, so nothing about this
+      // request's dimensions exceeds its own upper bound -- without the
+      // isPermanentlyDenied() check, "allow-once" below would succeed.
+      expect(request?.requested.remoteGit).toBe(true);
+      await app.resolvePermission({ requestId, decision: "allow-once" });
+      const result = await run;
+      expect(result).toBeInstanceOf(Error);
+      expect((result as Error).message).toContain("Permission denied");
+      expect(app.status().permissions.find((item) => item.id === requestId)?.status).toBe(
+        "Denied",
+      );
+    } finally {
+      app.close();
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
 });

@@ -32,7 +32,11 @@ import type {
 import { id, now, transitionChangeRequest, transitionTask } from "@agentflow/domain";
 import { ensureGitRepository, git, WorktreeManager, verifyRepository } from "@agentflow/git";
 import { SqliteEventStore } from "@agentflow/persistence";
-import { builtInPermissionProfiles, effectivePermissions } from "@agentflow/permission-engine";
+import {
+  builtInPermissionProfiles,
+  effectivePermissions,
+  isPermanentlyDenied,
+} from "@agentflow/permission-engine";
 import { lines, Logger, ProcessSupervisor, redactSecrets } from "@agentflow/process-supervisor";
 import { parseMethodPayload, type AdapterEvent } from "@agentflow/protocol";
 import { route } from "@agentflow/routing-engine";
@@ -2063,8 +2067,18 @@ export class AgentFlowApplication {
     const request = this.permissionRequests.get(input.requestId);
     const pending = this.pendingApprovals.get(input.requestId);
     if (!request || !pending) throw new Error("Permission request is no longer pending");
+    // isPermanentlyDenied() encodes hard v1 limits (secret access, automatic
+    // force-push, credential-file paths) that no permission profile is ever
+    // allowed to grant. A human clicking "allow" must not be able to bypass
+    // those the way exceeding a profile's own dimensions already can't.
+    const permanentlyDenied = isPermanentlyDenied({
+      ...request.requested,
+      command: request.command,
+      path: request.workingDirectory,
+    });
     const invalidApproval =
-      !input.decision.startsWith("deny") && this.permissionExceedsEffective(request);
+      !input.decision.startsWith("deny") &&
+      (Boolean(permanentlyDenied) || this.permissionExceedsEffective(request));
     const decision = invalidApproval ? "deny-and-stop" : input.decision;
     request.status = decision.startsWith("deny") ? "Denied" : "Allowed";
     request.resolvedAt = now();
