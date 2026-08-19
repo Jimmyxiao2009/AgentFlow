@@ -992,7 +992,11 @@ export default function AgentFlowWorkspace() {
             (candidate) => candidate.conversationId === conversation.id,
           );
           const status = activeRuns.length
-            ? `${activeRuns.length} agent${activeRuns.length === 1 ? "" : "s"} running`
+            ? t(
+                locale,
+                activeRuns.length === 1 ? "Status.AgentRunningOne" : "Status.AgentsRunningMany",
+                { count: activeRuns.length },
+              )
             : changeRequest?.state || latestRun?.state || "Idle";
           const statusTone = activeRuns.length
             ? "accent"
@@ -1011,7 +1015,7 @@ export default function AgentFlowWorkspace() {
             pinned: pinnedConversationIds.includes(conversation.id),
             status,
             statusTone,
-            time: relativeTime(conversation.updatedAt),
+            time: relativeTime(locale, conversation.updatedAt),
           };
         })
     : [];

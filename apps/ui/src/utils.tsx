@@ -61,15 +61,15 @@ export function stripEscalationMarker(text: string) {
   return typeof text === "string" ? text.replace(escalationMarkerPattern, "").trimEnd() : text;
 }
 
-export function relativeTime(value: string) {
+export function relativeTime(locale: Locale, value: string) {
   if (!value) return "";
   const elapsed = Math.max(0, Date.now() - new Date(value).getTime());
   const minutes = Math.floor(elapsed / 60_000);
-  if (minutes < 1) return "now";
-  if (minutes < 60) return `${minutes}m`;
+  if (minutes < 1) return t(locale, "Time.JustNow");
+  if (minutes < 60) return t(locale, "Time.MinutesShort", { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h`;
-  return `${Math.floor(hours / 24)}d`;
+  if (hours < 24) return t(locale, "Time.HoursShort", { count: hours });
+  return t(locale, "Time.DaysShort", { count: Math.floor(hours / 24) });
 }
 
 export function permissionProfileLabel(locale: Locale, profileName: string) {

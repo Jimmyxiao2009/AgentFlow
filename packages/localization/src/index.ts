@@ -500,6 +500,12 @@ const english: Record<string, string> = {
   "Error.SomethingWentWrong": "Something went wrong",
   "Error.UnexpectedRenderError": "An unexpected error occurred while rendering the workspace.",
   "Error.ReloadWorkspace": "Reload workspace",
+  "Time.JustNow": "now",
+  "Time.MinutesShort": "{count}m",
+  "Time.HoursShort": "{count}h",
+  "Time.DaysShort": "{count}d",
+  "Status.AgentRunningOne": "{count} agent running",
+  "Status.AgentsRunningMany": "{count} agents running",
 };
 
 const overrides: Record<Locale, Record<string, string>> = {
@@ -994,6 +1000,12 @@ const overrides: Record<Locale, Record<string, string>> = {
     "Error.SomethingWentWrong": "出现问题",
     "Error.UnexpectedRenderError": "渲染工作区时发生意外错误。",
     "Error.ReloadWorkspace": "重新加载工作区",
+    "Time.JustNow": "刚刚",
+    "Time.MinutesShort": "{count}分钟",
+    "Time.HoursShort": "{count}小时",
+    "Time.DaysShort": "{count}天",
+    "Status.AgentRunningOne": "{count} 个代理正在运行",
+    "Status.AgentsRunningMany": "{count} 个代理正在运行",
   },
   "zh-TW": {
     "Composer.EnterMessageToSend": "請先輸入訊息再傳送。",
@@ -1483,6 +1495,12 @@ const overrides: Record<Locale, Record<string, string>> = {
     "Error.SomethingWentWrong": "發生錯誤",
     "Error.UnexpectedRenderError": "渲染工作區時發生意外錯誤。",
     "Error.ReloadWorkspace": "重新載入工作區",
+    "Time.JustNow": "剛剛",
+    "Time.MinutesShort": "{count}分鐘",
+    "Time.HoursShort": "{count}小時",
+    "Time.DaysShort": "{count}天",
+    "Status.AgentRunningOne": "{count} 個代理正在執行",
+    "Status.AgentsRunningMany": "{count} 個代理正在執行",
   },
   "ja-JP": {
     "Composer.EnterMessageToSend": "送信する前にメッセージを入力してください。",
@@ -1972,6 +1990,12 @@ const overrides: Record<Locale, Record<string, string>> = {
     "Error.SomethingWentWrong": "問題が発生しました",
     "Error.UnexpectedRenderError": "ワークスペースのレンダリング中に予期しないエラーが発生しました。",
     "Error.ReloadWorkspace": "ワークスペースを再読み込み",
+    "Time.JustNow": "たった今",
+    "Time.MinutesShort": "{count}分",
+    "Time.HoursShort": "{count}時間",
+    "Time.DaysShort": "{count}日",
+    "Status.AgentRunningOne": "エージェント{count}件が実行中",
+    "Status.AgentsRunningMany": "エージェント{count}件が実行中",
   },
   "ko-KR": {
     "Composer.EnterMessageToSend": "보내기 전에 메시지를 입력하세요.",
@@ -2461,6 +2485,12 @@ const overrides: Record<Locale, Record<string, string>> = {
     "Error.SomethingWentWrong": "문제가 발생했습니다",
     "Error.UnexpectedRenderError": "작업 공간을 렌더링하는 동안 예기치 않은 오류가 발생했습니다.",
     "Error.ReloadWorkspace": "작업 공간 다시 불러오기",
+    "Time.JustNow": "방금",
+    "Time.MinutesShort": "{count}분",
+    "Time.HoursShort": "{count}시간",
+    "Time.DaysShort": "{count}일",
+    "Status.AgentRunningOne": "에이전트 {count}개 실행 중",
+    "Status.AgentsRunningMany": "에이전트 {count}개 실행 중",
   },
 };
 
