@@ -2143,6 +2143,43 @@ export class AgentFlowApplication {
     });
   }
 
+  // A task's worktree is otherwise always cut from the change request's
+  // original baseCommit, so a Worker on a dependent task never actually sees
+  // the files a prerequisite task wrote — dependsOn only gated scheduling
+  // order, not the code the dependent task starts from. Cherry-pick each
+  // dependency's latest approved PatchSet onto the fresh worktree before the
+  // agent session starts; diff()/commit() downstream compare against HEAD,
+  // so this only makes the dependency's files visible to the worker without
+  // pulling them into the task's own PatchSet.
+  private async applyDependencyPatchSets(task: Task, workspace: Workspace): Promise<void> {
+    if (!task.dependencyIds.length) return;
+    let head = workspace.baseCommit;
+    for (const dependencyId of task.dependencyIds) {
+      const dependencyPatchSet = [...this.patchSets.values()]
+        .filter(
+          (candidate) => candidate.taskId === dependencyId && candidate.reviewState === "Approved",
+        )
+        .sort((left, right) => right.sequence - left.sequence)[0];
+      if (!dependencyPatchSet) {
+        const dependencyTask = this.tasks.get(dependencyId);
+        throw new Error(
+          `Task ${task.key} depends on ${dependencyTask?.key ?? dependencyId}, which has no approved PatchSet yet`,
+        );
+      }
+      const result = await git(workspace.path, ["cherry-pick", dependencyPatchSet.resultCommit]);
+      if (result.exitCode !== 0) {
+        await git(workspace.path, ["cherry-pick", "--abort"]);
+        const dependencyTask = this.tasks.get(dependencyId);
+        throw new Error(
+          `Could not bring dependency ${dependencyTask?.key ?? dependencyId}'s changes into task ${task.key}'s worktree: ${result.stderr.slice(0, 2_000)}`,
+        );
+      }
+      head = dependencyPatchSet.resultCommit;
+    }
+    const resolved = await git(workspace.path, ["rev-parse", "HEAD"]);
+    workspace.baseCommit = resolved.exitCode === 0 ? resolved.stdout.trim() : head;
+  }
+
   async runTask(
     payload: unknown,
     signal = new AbortController().signal,
@@ -2281,6 +2318,15 @@ export class AgentFlowApplication {
     try {
       workspace = await this.worktrees.create(project.repositoryPath, workspaceDraft);
     } catch (error: unknown) {
+      this.recordTaskFailure(task, run, session, runController.signal, error);
+      signal.removeEventListener("abort", forwardAbort);
+      this.activeRuns.delete(runId);
+      throw error;
+    }
+    try {
+      await this.applyDependencyPatchSets(task, workspace);
+    } catch (error: unknown) {
+      await this.worktrees.remove(project.repositoryPath, workspace.path).catch(() => undefined);
       this.recordTaskFailure(task, run, session, runController.signal, error);
       signal.removeEventListener("abort", forwardAbort);
       this.activeRuns.delete(runId);

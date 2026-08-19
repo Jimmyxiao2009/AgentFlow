@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { FakeAdapter } from "@agentflow/adapter-fake";
+import { git } from "@agentflow/git";
 import { AgentFlowApplication } from "./index.js";
 
 describe("application workflow chain", () => {
@@ -184,6 +185,17 @@ describe("application workflow chain", () => {
     const parallelExecutions = await app.runReadyTasks({ changeRequestId: plan.changeRequestId });
     expect(parallelExecutions).toHaveLength(2);
     expect(new Set(parallelExecutions.map((item) => item.workspace.path)).size).toBe(2);
+    // TASK-002 and TASK-003 both depend on TASK-001: their worktrees must be
+    // cut from TASK-001's approved result, not from the plan's original base
+    // commit, or the dependent workers would never see docs/contract.md.
+    for (const execution of parallelExecutions) {
+      const dependencyFile = await git(execution.workspace.path, [
+        "show",
+        `${execution.patchSet!.baseCommit}:docs/contract.md`,
+      ]);
+      expect(dependencyFile.exitCode).toBe(0);
+      expect(dependencyFile.stdout).toBe("isolated\n");
+    }
     const approvedPatchSets = [fixedReview.approvedPatchSet!];
     for (const execution of parallelExecutions) {
       const validation = await app.runValidation({ patchSetId: execution.patchSet!.id });
