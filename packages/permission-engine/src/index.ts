@@ -171,6 +171,13 @@ export function commandAllowed(
   if (/[;&|`$<>\n\r]/.test(normalized)) return false;
   if (normalized.startsWith("git push") || normalized.startsWith("git merge")) return false;
   if (normalized.includes("..")) return false;
+  // Reject arguments that can redirect a vetted command onto an unrelated
+  // path/tool — e.g. "npm test --prefix C:/evil", "git show --output=...",
+  // or any absolute/relative path argument. The allowed-commands list is a
+  // fixed set of read-only/safe invocations; option-and-path injection escapes
+  // the worktree sandbox the prefix match is meant to enforce.
+  if (/\s--?[\w-]+(\s|=).*([A-Za-z]:[\\/]|[~/]|\.\.[\\/])/i.test(normalized)) return false;
+  if (/\s([A-Za-z]:[\\/]|[~/]|\.\.[\\/])/i.test(normalized)) return false;
   const insideWorktree =
     workingDirectory === assignedWorktree ||
     workingDirectory.startsWith(`${assignedWorktree}/`) ||

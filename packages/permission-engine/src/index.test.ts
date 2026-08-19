@@ -13,6 +13,22 @@ describe("permission engine", () => {
     expect(commandAllowed("npm test", profile, "C:/repo/worktree", "C:/repo/worktree")).toBe(true);
     expect(commandAllowed("npm test", profile, "C:/repo", "C:/repo/worktree")).toBe(false);
   });
+  it("rejects path/option injection that escapes an allowed command prefix", () => {
+    const profile = builtInPermissionProfiles().find((item) => item.name === "Workspace Write")!;
+    // A vetted "npm test" must not be allowed to redirect via --prefix to an
+    // unrelated path, nor accept absolute/relative path arguments.
+    expect(
+      commandAllowed("npm test --prefix C:/evil", profile, "C:/repo/worktree", "C:/repo/worktree"),
+    ).toBe(false);
+    expect(
+      commandAllowed("npm run build /etc/passwd", profile, "C:/repo/worktree", "C:/repo/worktree"),
+    ).toBe(false);
+    expect(
+      commandAllowed("git show --output=../escape", profile, "C:/repo/worktree", "C:/repo/worktree"),
+    ).toBe(false);
+    // A plain allowed command still passes.
+    expect(commandAllowed("npm test", profile, "C:/repo/worktree", "C:/repo/worktree")).toBe(true);
+  });
   it("permanently denies credential access", () =>
     expect(isPermanentlyDenied({ secretAccess: true })).toBeTruthy());
   it("permanently denies .env.local and other .env.* credential variants", () => {
