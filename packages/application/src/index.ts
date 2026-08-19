@@ -323,7 +323,7 @@ export class AgentFlowApplication {
   >();
   private readonly profiles: AuthenticationProfile[];
   private readonly adapters: Map<string, AgentAdapter>;
-  private readonly models = new Map<string, ModelDefinition>();
+  private models = new Map<string, ModelDefinition>();
   private settings: AgentFlowSettings;
   constructor(private readonly options: ApplicationOptions) {
     this.fake = options.fakeAdapter;
@@ -685,7 +685,13 @@ export class AgentFlowApplication {
   }
 
   async probeProfiles(signal = new AbortController().signal): Promise<AuthenticationProfile[]> {
-    this.models.clear();
+    // Build the next model map in a local and swap it in atomically at the
+    // end. The previous this.models.clear() at the start wiped the map for the
+    // entire probe duration, so a concurrent task.run/message.send that read
+    // this.models mid-probe saw an empty map and failed model lookup. With a
+    // local-then-swap, concurrent readers always see either the old complete
+    // map or the new complete map, never an empty one.
+    const next = new Map<string, ModelDefinition>();
     await Promise.all(
       this.profiles.map(async (profile) => {
         const adapter = this.adapters.get(profile.adapterId);
@@ -708,11 +714,11 @@ export class AgentFlowApplication {
           }
           if (profile.status === "Ready") {
             const discovery = await adapter.discoverModels(profile, signal);
-            for (const model of discovery.models) this.models.set(model.id, model);
+            for (const model of discovery.models) next.set(model.id, model);
             for (const configured of this.settings.manualModels) {
               if (configured.adapterId !== adapter.id) continue;
               const modelId = manualModelKey(adapter.id, configured.modelId);
-              this.models.set(modelId, {
+              next.set(modelId, {
                 id: modelId,
                 adapterId: adapter.id,
                 providerId: configured.providerId,
@@ -736,6 +742,9 @@ export class AgentFlowApplication {
         }
       }),
     );
+    // Atomic swap: replace the published map in one assignment so concurrent
+    // readers never observe a partially-populated or empty map.
+    this.models = next;
     return this.profiles.map((profile) => ({ ...profile }));
   }
 
@@ -3510,7 +3519,11 @@ export class AgentFlowApplication {
     // the whole process tree per platform (taskkill /T on Windows, process
     // group signal elsewhere).
     for (const controller of this.activeRuns.values()) controller.abort();
-    this.debugProcesses.stopAll();
+    // Forcefully tear down debug subprocesses synchronously. stopAll()'s
+    // 2s SIGKILL timer is unref'd and would be cancelled by the process.exit()
+    // that follows close() in the shutdown path, orphaning detached debug
+    // process groups (e.g. a dev server still bound to its port).
+    this.debugProcesses.killAllNow();
     try {
       this.store.close();
     } catch {

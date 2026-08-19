@@ -222,6 +222,43 @@ export class ProcessSupervisor {
   stopAll(): void {
     for (const id of this.processes.keys()) this.cancel(id);
   }
+
+  /**
+   * Forcefully kills every tracked child immediately (SIGKILL / taskkill /T /F)
+   * with no grace period. Use during shutdown: cancel()'s 2s SIGKILL timer is
+   * unref'd, so a process.exit() that follows close() cancels the timer before
+   * it fires, orphaning debug subprocesses (especially detached Unix process
+   * groups that the runtime's own exit won't reap). This guarantees the tree
+   * is torn down before the runtime exits.
+   */
+  killAllNow(): void {
+    for (const child of this.processes.values()) {
+      if (child.exitCode !== null) continue;
+      if (process.platform === "win32" && child.pid) {
+        spawn("taskkill.exe", ["/PID", String(child.pid), "/T", "/F"], {
+          shell: false,
+          windowsHide: true,
+          stdio: "ignore",
+        });
+      } else if (child.pid) {
+        try {
+          process.kill(-child.pid, "SIGKILL");
+        } catch {
+          try {
+            child.kill("SIGKILL");
+          } catch {
+            /* already gone */
+          }
+        }
+      } else {
+        try {
+          child.kill("SIGKILL");
+        } catch {
+          /* already gone */
+        }
+      }
+    }
+  }
 }
 
 export async function* lines(stream: NodeJS.ReadableStream): AsyncIterable<string> {

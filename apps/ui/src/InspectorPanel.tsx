@@ -454,7 +454,7 @@ export const InspectorPanel = React.memo(function InspectorPanel({
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {displayRuns.map((a, i) => (
               <div
-                key={i}
+                key={a.name ?? i}
                 style={{
                   background: "var(--elevated)",
                   border: "1px solid var(--border-subtle)",

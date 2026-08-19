@@ -404,6 +404,15 @@ fn read_sidecar_output(
             continue;
         }
         let Some(id) = message.get("id").and_then(Value::as_str) else {
+            // Lifecycle signals (runtime.ready / runtime.shutdown) have no `id`
+            // and no `kind: "event"` wrapper, so they would be silently
+            // dropped here. Forward them to the renderer as lifecycle events so
+            // it can distinguish a ready/shutting-down sidecar.
+            if let Some(msg_type) = message.get("type").and_then(Value::as_str) {
+                if msg_type == "runtime.ready" || msg_type == "runtime.shutdown" {
+                    let _ = app.emit("agentflow.event", &message);
+                }
+            }
             continue;
         };
         if let Ok(mut pending) = responses.lock() {
@@ -523,8 +532,10 @@ async fn bridge_request(
     }
     validate_bridge_request(&request)?;
     // Scoped so the (non-Send) MutexGuard is structurally dropped at the end
-    // of this block, well before the await point below.
-    let receiver = {
+    // of this block, well before the await point below. Returns the receiver
+    // plus a clone of the responses Arc and the request id so the timeout
+    // cleanup below can remove a leaked pending sender without re-locking.
+    let (receiver, responses_arc, request_id) = {
         let mut sidecar = state
             .0
             .lock()
@@ -565,7 +576,7 @@ async fn bridge_request(
             }
             return Err(error.to_string());
         }
-        receiver
+        (receiver, sidecar.responses.clone(), request_id)
     };
     // bridge_request is a synchronous-looking command, but a naive blocking
     // recv() here would run on Tauri's main thread (non-async commands are
@@ -580,10 +591,20 @@ async fn bridge_request(
     // surface instead of hanging; long-running streaming work is delivered as
     // events, not as a single blocking response, so 60s only bounds the
     // request/acknowledgment round-trip.
-    tauri::async_runtime::spawn_blocking(move || receiver.recv_timeout(Duration::from_secs(60)))
-        .await
-        .map_err(|error| format!("Bridge request task failed: {error}"))?
-        .map_err(|error| format!("Bridge request timed out or the sidecar did not respond: {error}"))?
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        receiver.recv_timeout(Duration::from_secs(60))
+    })
+    .await
+    .map_err(|error| format!("Bridge request task failed: {error}"))?;
+    // On timeout or a lost response, remove the pending sender from the map so
+    // it is not leaked for the rest of the session. (On success the reader
+    // already removed it; remove() is a harmless no-op if the id is gone.)
+    if result.is_err() {
+        if let Ok(mut pending) = responses_arc.lock() {
+            pending.remove(&request_id);
+        }
+    }
+    result.map_err(|error| format!("Bridge request timed out or the sidecar did not respond: {error}"))?
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
