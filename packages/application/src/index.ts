@@ -2896,9 +2896,23 @@ export class AgentFlowApplication {
       }
       const reviewDiff = await this.worktrees.diff(reviewWorkspace.path);
       if (reviewDiff.files.length) throw new Error("Reviewer modified its read-only worktree");
+      // Remove the read-only review worktree now that the review is done — it
+      // has no further use and would otherwise leak a worktree directory and
+      // branch on every review. Mirror the task path's cleanup.
+      await this.worktrees.remove(project.repositoryPath, reviewWorkspace.path).catch(() => undefined);
       reviewWorkspace.status = "Released";
       this.store.saveProjection(`workspace:${reviewWorkspace.id}`, 1, reviewWorkspace);
     } catch (error: unknown) {
+      // The review failed (adapter error, reviewer wrote files, or abort).
+      // Remove the review worktree so it does not leak; mark it Released so the
+      // orphan reclaimer does not reprocess it on the next restart.
+      if (reviewWorkspace) {
+        await this.worktrees
+          .remove(project.repositoryPath, reviewWorkspace.path)
+          .catch(() => undefined);
+        reviewWorkspace.status = "Released";
+        this.store.saveProjection(`workspace:${reviewWorkspace.id}`, 1, reviewWorkspace);
+      }
       reviewerRun.state = signal.aborted ? "Cancelled" : "Failed";
       reviewerRun.completedAt = now();
       reviewerRun.error = error instanceof Error ? error.message : "Review run failed";
@@ -3130,6 +3144,19 @@ export class AgentFlowApplication {
       source: "runtime",
       payload: { attempt, result },
     });
+    // A completed integration's worktree has served its purpose (the result is
+    // recorded on the change request / attempt); remove it so it does not leak.
+    // On a conflict, keep the worktree branch for a retry — mark it Released so
+    // the orphan reclaimer can eventually collect it if the user never retries.
+    if (result.status === "Completed") {
+      await this.worktrees
+        .remove(project.repositoryPath, integrationWorkspace.path)
+        .catch(() => undefined);
+      integrationWorkspace.status = "Released";
+    } else {
+      integrationWorkspace.status = "Released";
+    }
+    this.store.saveProjection(`workspace:${integrationWorkspace.id}`, 1, integrationWorkspace);
     return attempt;
   }
 
