@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { FakeAdapter } from "@agentflow/adapter-fake";
-import { AgentFlowApplication } from "./index.js";
+import { AgentFlowApplication, classifyPlanRisk } from "./index.js";
 
 describe("application recovery", () => {
   it("reloads durable project projections after a restart", () => {
@@ -183,6 +183,19 @@ describe("application settings security", () => {
 });
 
 describe("application permissions", () => {
+  it("classifies derived risk words as High risk (not just exact words)", () => {
+    // The previous \b(auth|migration|...)\b regex missed derived words, so a
+    // plan mentioning "authentication"/"migrations"/"credentials" was
+    // misclassified as Low risk and could be auto-approved.
+    expect(classifyPlanRisk("add authentication for the API")).toBe("High");
+    expect(classifyPlanRisk("run the database migrations")).toBe("High");
+    expect(classifyPlanRisk("rotate credentials")).toBe("High");
+    expect(classifyPlanRisk("update dependencies")).toBe("High");
+    expect(classifyPlanRisk("add a public health check endpoint")).toBe("High");
+    // A genuinely low-risk prompt stays Low.
+    expect(classifyPlanRisk("rename a local variable")).toBe("Low");
+  });
+
   it("keeps manually configured models explicit and unverified", async () => {
     const root = mkdtempSync(join(tmpdir(), "agentflow-manual-model-"));
     const app = new AgentFlowApplication({

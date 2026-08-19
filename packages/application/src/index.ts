@@ -66,8 +66,13 @@ export interface MessageResult {
   specificationRevisionId?: string;
 }
 
-function classifyPlanRisk(text: string): "Low" | "High" {
-  return /\b(auth|credential|database|migration|network|dependency|security|delete|public|schema)\b/i.test(
+export function classifyPlanRisk(text: string): "Low" | "High" {
+  // Match risk terms as substrings so derived words are also caught:
+  // "authentication"/"authz", "migrations", "credentials", "dependencies",
+  // "networking". The previous \b(term)\b anchors required an exact word, so
+  // "authentication" did not match "auth" and a risky plan was misclassified
+  // as Low risk and auto-approved.
+  return /(auth|credential|database|migration|network|depend|secur|delet|public|schema)/i.test(
     text,
   )
     ? "High"
