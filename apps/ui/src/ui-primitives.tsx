@@ -245,13 +245,7 @@ export function Segmented({
   );
 }
 
-export function StaticField({
-  children,
-  mono,
-}: {
-  children: React.ReactNode;
-  mono?: boolean;
-}) {
+export function StaticField({ children, mono }: { children: React.ReactNode; mono?: boolean }) {
   return (
     <div
       className={mono ? "af-mono" : ""}
@@ -307,13 +301,7 @@ export function SettingsRow({
   );
 }
 
-export function SettingsGroup({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+export function SettingsGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 28 }}>
       <div

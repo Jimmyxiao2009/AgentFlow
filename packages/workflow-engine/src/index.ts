@@ -123,8 +123,7 @@ export class TaskDagScheduler {
     if (!task || task.state !== "Leased") throw new Error(`Task ${taskId} is not leased`);
     // When a caller identifies itself, verify it owns the lease before
     // releasing — prevents a concurrent run from releasing another run's task.
-    if (runId && task.lease?.runId !== runId)
-      throw new Error("Task lease is owned by another run");
+    if (runId && task.lease?.runId !== runId) throw new Error("Task lease is owned by another run");
     task.state = transitionTask(task.state, next);
     task.lease = undefined;
     this.leases.delete(taskId);
@@ -136,8 +135,7 @@ export class TaskDagScheduler {
       throw new Error(`Task ${taskId} is not retryable`);
     // A retryable task is no longer leased, but if a caller passes runId we
     // still sanity-check that the task is not actively owned by a live lease.
-    if (runId && this.leases.has(taskId))
-      throw new Error(`Task ${taskId} is still leased`);
+    if (runId && this.leases.has(taskId)) throw new Error(`Task ${taskId} is still leased`);
     task.state = transitionTask(task.state, "Ready");
     return structuredClone(task);
   }
@@ -188,7 +186,8 @@ export function assertDeterministicGate(validation: ValidationRun[]): void {
   // closed here prevents a PatchSet from reaching review/integration without
   // any validation evidence — the previous `[].find(...)` was a no-op that
   // always passed.
-  if (validation.length === 0) throw new Error("At least one validation run is required before review");
+  if (validation.length === 0)
+    throw new Error("At least one validation run is required before review");
   // A blocking check that did not explicitly pass (Failed OR Skipped OR any
   // other non-Passed terminal state) must block. The previous predicate only
   // matched status === "Failed", so a blocking check marked "Skipped" slipped
@@ -480,10 +479,10 @@ export class WorkflowOrchestrator {
         const regex = new RegExp(
           "^" +
             rule
-            .replace(/[.+^${}()|[\]\\]/g, "\\$&")
-            .replace(/\*\*\//g, ".*?/")
-            .replace(/\*/g, "[^/]*")
-            .replace(/\/\*\*$/, "(/.*)?") +
+              .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+              .replace(/\*\*\//g, ".*?/")
+              .replace(/\*/g, "[^/]*")
+              .replace(/\/\*\*$/, "(/.*)?") +
             "$",
         );
         return regex.test(normalized);

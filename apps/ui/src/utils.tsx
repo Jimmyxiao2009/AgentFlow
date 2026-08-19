@@ -222,10 +222,7 @@ export function uiSettingsToRuntime(settings: UiSettings) {
             modelId: model.modelId.trim().slice(0, 300),
             name: model.name.trim().slice(0, 300),
           }))
-          .filter(
-            (model) =>
-              model.adapterId && model.providerId && model.modelId && model.name,
-          )
+          .filter((model) => model.adapterId && model.providerId && model.modelId && model.name)
       : [],
     aiProviders: Array.isArray(settings.aiProviders)
       ? settings.aiProviders
@@ -250,7 +247,8 @@ export function uiSettingsToRuntime(settings: UiSettings) {
                   .slice(0, 50)
                   .map((m: string) => m.trim().slice(0, 300))
               : undefined,
-            apiVersion: typeof p.apiVersion === "string" ? p.apiVersion.trim().slice(0, 100) : undefined,
+            apiVersion:
+              typeof p.apiVersion === "string" ? p.apiVersion.trim().slice(0, 100) : undefined,
           }))
       : [],
     defaultModelId:
@@ -431,7 +429,7 @@ export const defaultUiSettings = {
     modelId: string;
     name: string;
   }>,
-    aiProviders: [] as Array<{
+  aiProviders: [] as Array<{
     id: string;
     name: string;
     endpoint: string;

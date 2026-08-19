@@ -1,10 +1,6 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": { "outDir": "dist", "rootDir": "src", "composite": true },
-  "references": [
-    { "path": "../adapter-sdk" },
-    { "path": "../domain" },
-    { "path": "../protocol" }
-  ],
+  "references": [{ "path": "../adapter-sdk" }, { "path": "../domain" }, { "path": "../protocol" }],
   "include": ["src"]
 }

@@ -143,7 +143,15 @@ export function PermissionRequestCard({
   );
 }
 
-export function EscalationRequestCard({ request, onResolve, locale = "en-US" as Locale }: { request: { capability?: string; reason?: string }; onResolve: (approved: boolean) => void; locale?: Locale }) {
+export function EscalationRequestCard({
+  request,
+  onResolve,
+  locale = "en-US" as Locale,
+}: {
+  request: { capability?: string; reason?: string };
+  onResolve: (approved: boolean) => void;
+  locale?: Locale;
+}) {
   const title =
     request.capability === "workers"
       ? t(locale, "Escalation.WorkersRequested")

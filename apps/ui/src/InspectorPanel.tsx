@@ -155,7 +155,11 @@ export const InspectorPanel = React.memo(function InspectorPanel({
         ))}
       </div>
 
-      <div key={tab} className="af-scroll af-fade-in" style={{ flex: 1, overflowY: "auto", padding: 16 }}>
+      <div
+        key={tab}
+        className="af-scroll af-fade-in"
+        style={{ flex: 1, overflowY: "auto", padding: 16 }}
+      >
         {tab === "Overview" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div>
@@ -279,14 +283,17 @@ export const InspectorPanel = React.memo(function InspectorPanel({
                   }}
                 >
                   <div>
-                    {t(locale, "Navigation.Rule")}: {currentRoutingDecision.matchedRule || "unavailable"}
+                    {t(locale, "Navigation.Rule")}:{" "}
+                    {currentRoutingDecision.matchedRule || "unavailable"}
                   </div>
                   <div>
-                    {t(locale, "Navigation.Reason")}: {currentRoutingDecision.reason || "unavailable"}
+                    {t(locale, "Navigation.Reason")}:{" "}
+                    {currentRoutingDecision.reason || "unavailable"}
                   </div>
                   {currentRoutingDecision.selected && (
                     <div>
-                      {t(locale, "Navigation.Selected")}: {currentRoutingDecision.selected.adapterId}
+                      {t(locale, "Navigation.Selected")}:{" "}
+                      {currentRoutingDecision.selected.adapterId}
                       {currentRoutingDecision.selected.profileId
                         ? ` · ${currentRoutingDecision.selected.profileId}`
                         : ""}
@@ -622,7 +629,8 @@ export const InspectorPanel = React.memo(function InspectorPanel({
             ) : (
               <>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5 }}>
-                  <GitCommit size={13} color="var(--text-muted)" /> {t(locale, "Inspector.NoPatchSets")}
+                  <GitCommit size={13} color="var(--text-muted)" />{" "}
+                  {t(locale, "Inspector.NoPatchSets")}
                 </div>
               </>
             )}
@@ -648,7 +656,9 @@ export const InspectorPanel = React.memo(function InspectorPanel({
                   <>
                     <Circle size={10} color="var(--success)" />
                     <span style={{ flex: 1, color: "var(--text-secondary)" }}>
-                      {t(locale, "Inspector.DebugRunning", { command: currentProject.debugCommand })}
+                      {t(locale, "Inspector.DebugRunning", {
+                        command: currentProject.debugCommand,
+                      })}
                     </span>
                     <button
                       onClick={stopDebug}
@@ -757,7 +767,9 @@ export const InspectorPanel = React.memo(function InspectorPanel({
                   }}
                 >
                   <ClipboardCheck size={13} /> {review.verdict} ·{" "}
-                  {review.independent ? t(locale, "Inspector.Independent") : t(locale, "Inspector.SameRun")}
+                  {review.independent
+                    ? t(locale, "Inspector.Independent")
+                    : t(locale, "Inspector.SameRun")}
                 </div>
               ))
             ) : displayFindings.length ? (
@@ -843,4 +855,3 @@ export const InspectorPanel = React.memo(function InspectorPanel({
     </div>
   );
 });
-

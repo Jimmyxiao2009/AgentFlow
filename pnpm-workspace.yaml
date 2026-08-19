@@ -10,5 +10,5 @@ allowBuilds:
   better-sqlite3: true
   esbuild: true
 minimumReleaseAgeExclude:
-  - '@ai-sdk/gateway@2.0.135'
+  - "@ai-sdk/gateway@2.0.135"
   - ai@5.0.238

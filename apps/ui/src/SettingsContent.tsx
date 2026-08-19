@@ -818,8 +818,8 @@ export const SettingsContent = React.memo(function SettingsContent({
                   <div style={{ margin: "5px 0 0 16px", color: "var(--text-muted)", fontSize: 11 }}>
                     {t(locale, "SettingsText.ModelsCount", {
                       count: provider.models?.length || (provider.model ? 1 : 0),
-                    })} ·{" "}
-                    {provider.apiVersion ? "Azure" : "OpenAI"}
+                    })}{" "}
+                    · {provider.apiVersion ? "Azure" : "OpenAI"}
                   </div>
                 </button>
               ))}
@@ -880,9 +880,25 @@ export const SettingsContent = React.memo(function SettingsContent({
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <Badge tone={providerState === "Ready" ? "success" : selectedProvider ? "accent" : "muted"}>
-                    <Dot tone={providerState === "Ready" ? "success" : selectedProvider ? "accent" : "muted"} />{" "}
-                    {providerState === "Ready" ? t(locale, "Status.Ready") : selectedProvider ? s("Configured") : s("ProviderNotConfigured")}
+                  <Badge
+                    tone={
+                      providerState === "Ready" ? "success" : selectedProvider ? "accent" : "muted"
+                    }
+                  >
+                    <Dot
+                      tone={
+                        providerState === "Ready"
+                          ? "success"
+                          : selectedProvider
+                            ? "accent"
+                            : "muted"
+                      }
+                    />{" "}
+                    {providerState === "Ready"
+                      ? t(locale, "Status.Ready")
+                      : selectedProvider
+                        ? s("Configured")
+                        : s("ProviderNotConfigured")}
                   </Badge>
                   {selectedProvider && (
                     <button type="button" style={btnGhost} onClick={() => void onProbe?.()}>
@@ -1011,7 +1027,9 @@ export const SettingsContent = React.memo(function SettingsContent({
                         <div className="af-mono" style={{ fontSize: 12.5 }}>
                           {model}
                         </div>
-                        <div style={{ display: "flex", gap: 6, marginTop: 7, alignItems: "center" }}>
+                        <div
+                          style={{ display: "flex", gap: 6, marginTop: 7, alignItems: "center" }}
+                        >
                           <Badge tone="muted">{s("TextChat")}</Badge>
                           <Badge tone="accent">Vercel AI SDK</Badge>
                           {selectedDefaultModel === `${selectedProvider?.id}::${model}` && (
@@ -1108,10 +1126,7 @@ export const SettingsContent = React.memo(function SettingsContent({
               )}
               {providerTab === "connection" && (
                 <SettingsGroup title={s("Connection")}>
-                  <SettingsRow
-                    title={s("ProviderName")}
-                    desc={s("ProviderNameDescription")}
-                  >
+                  <SettingsRow title={s("ProviderName")} desc={s("ProviderNameDescription")}>
                     <input
                       aria-label={s("ProviderName")}
                       value={selectedProvider?.name || ""}
@@ -1122,10 +1137,7 @@ export const SettingsContent = React.memo(function SettingsContent({
                       style={{ ...fieldStyle, width: "min(100%, 420px)" }}
                     />
                   </SettingsRow>
-                  <SettingsRow
-                    title={s("Endpoint")}
-                    desc={s("EndpointDescription")}
-                  >
+                  <SettingsRow title={s("Endpoint")} desc={s("EndpointDescription")}>
                     <input
                       aria-label={s("Endpoint")}
                       value={selectedProvider?.endpoint || ""}
@@ -1136,10 +1148,7 @@ export const SettingsContent = React.memo(function SettingsContent({
                       style={{ ...fieldStyle, width: "min(100%, 420px)" }}
                     />
                   </SettingsRow>
-                  <SettingsRow
-                    title={s("ApiKey")}
-                    desc={s("ApiKeyDescription")}
-                  >
+                  <SettingsRow title={s("ApiKey")} desc={s("ApiKeyDescription")}>
                     <input
                       aria-label={s("ApiKey")}
                       type="password"
@@ -1151,10 +1160,7 @@ export const SettingsContent = React.memo(function SettingsContent({
                       style={{ ...fieldStyle, width: "min(100%, 420px)" }}
                     />
                   </SettingsRow>
-                  <SettingsRow
-                    title={s("ApiVersion")}
-                    desc={s("ApiVersionDescription")}
-                  >
+                  <SettingsRow title={s("ApiVersion")} desc={s("ApiVersionDescription")}>
                     <input
                       aria-label={s("ApiVersion")}
                       value={selectedProvider?.apiVersion || ""}
@@ -1217,15 +1223,14 @@ export const SettingsContent = React.memo(function SettingsContent({
               {providerTab === "advanced" && (
                 <>
                   <SettingsGroup title={s("Advanced")}>
-                    <SettingsRow
-                      title={s("Authentication")}
-                      desc={s("AuthenticationDescription")}
-                    >
+                    <SettingsRow title={s("Authentication")} desc={s("AuthenticationDescription")}>
                       <Badge tone="muted">{s("DirectApi")}</Badge>
                     </SettingsRow>
                     <SettingsRow
                       title={s("ManualModels")}
-                      desc={t(locale, "SettingsText.ManualModelsCount", { count: manualModels.length })}
+                      desc={t(locale, "SettingsText.ManualModelsCount", {
+                        count: manualModels.length,
+                      })}
                     >
                       <Badge tone="warning">{s("Advanced")}</Badge>
                     </SettingsRow>

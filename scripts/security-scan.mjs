@@ -11,6 +11,8 @@ const excludedDirectories = new Set([
   ".git",
   ".agentflow-data",
   "node_modules",
+  ".pnpm-store",
+  ".kun-canvas",
   "dist",
   "target",
   "smoke-bundled-data-2",
@@ -29,6 +31,10 @@ const visit = (directory, prefix = "") => {
 visit(root);
 const findings = [];
 for (const relative of files) {
+  // Test fixtures legitimately contain fake credential-shaped strings to
+  // exercise redaction; they are not real secrets. Skip test files so the
+  // scan reports only production-source exposures.
+  if (/\.(?:test|spec)\.[a-z]+$/i.test(relative)) continue;
   let content;
   try {
     content = readFileSync(path.join(root, relative), "utf8");

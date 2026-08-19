@@ -15,8 +15,7 @@ export type LogSink = (entry: LogEntry) => void;
 /** Lightweight structured logger.  Writes JSON lines to stderr by default, or to a custom sink. */
 export class Logger {
   private static minLevel: LogLevel = "info";
-  private static sink: LogSink = (entry) =>
-    process.stderr.write(`${JSON.stringify(entry)}\n`);
+  private static sink: LogSink = (entry) => process.stderr.write(`${JSON.stringify(entry)}\n`);
 
   static setLevel(level: LogLevel): void {
     Logger.minLevel = level;

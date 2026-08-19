@@ -75,7 +75,7 @@ export class MafAdapter implements AgentAdapter {
     const hasConfig = this.providers.length > 0;
     return {
       ready: hasConfig,
-      version: hasConfig ? this.providers[0]!.apiVersion ?? "v1" : undefined,
+      version: hasConfig ? (this.providers[0]!.apiVersion ?? "v1") : undefined,
       authenticated: hasConfig,
       capabilities: {
         streaming: true,
@@ -330,14 +330,14 @@ export class MafAdapter implements AgentAdapter {
     return base.includes("/v1") ? `${base}/chat/completions` : `${base}/v1/chat/completions`;
   }
 
-  private buildSystemPrompt(
-    mode: AgentRequest["mode"],
-    role: AgentSessionHandle["role"],
-  ): string {
+  private buildSystemPrompt(mode: AgentRequest["mode"], role: AgentSessionHandle["role"]): string {
     const roleDescriptions: Record<string, string> = {
-      Planner: "You are a read-only planning agent. Analyze the codebase and produce a structured plan. Do not edit files.",
-      Worker: "You are an implementation agent. Implement the requested changes in the assigned worktree.",
-      Reviewer: "You are an independent code reviewer. Review the changes for correctness, security, and quality.",
+      Planner:
+        "You are a read-only planning agent. Analyze the codebase and produce a structured plan. Do not edit files.",
+      Worker:
+        "You are an implementation agent. Implement the requested changes in the assigned worktree.",
+      Reviewer:
+        "You are an independent code reviewer. Review the changes for correctness, security, and quality.",
       Investigator: "You are a read-only investigation agent. Answer questions about the codebase.",
     };
     const modeDescriptions: Record<string, string> = {

@@ -127,13 +127,21 @@ export function isPermanentlyDenied(
   // and a trailing `--force`/`-f` after a remote/branch. The previous literal
   // substring check let the short flag and the lease variant through the
   // permanent-deny layer that overrides a human "allow".
-  if (request.remoteGit && /\bgit\s+push\b.*(\s-f\b|\s--force(\b|-with-lease))/i.test(request.command ?? ""))
+  if (
+    request.remoteGit &&
+    /\bgit\s+push\b.*(\s-f\b|\s--force(\b|-with-lease))/i.test(request.command ?? "")
+  )
     return "Automatic force-push is permanently denied in v1";
   // Credential files: match the literal name followed by end, slash, OR a dot
   // so that ".env.local", ".env.production", ".env.dev" — common real secret
   // files — are also permanently denied. The previous terminator only accepted
   // end-of-string or a slash, so ".env.local" slipped through.
-  if (request.path && /(^|[\\/])(?:\.env|\.ssh|id_rsa|\.npmrc|\.pypirc|\.aws|credentials|\.netrc|\.gitconfig)(?:$|[\\/.])/i.test(request.path))
+  if (
+    request.path &&
+    /(^|[\\/])(?:\.env|\.ssh|id_rsa|\.npmrc|\.pypirc|\.aws|credentials|\.netrc|\.gitconfig)(?:$|[\\/.])/i.test(
+      request.path,
+    )
+  )
     return "Credential file access is permanently denied in v1";
   return undefined;
 }

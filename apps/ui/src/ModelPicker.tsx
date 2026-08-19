@@ -163,7 +163,11 @@ export function ModelPicker({
         </div>
         <div className="af-scroll" style={{ flex: 1, overflowY: "auto", padding: "0 4px 4px" }}>
           {hasAuto && !normalized && (
-            <div className="af-menu-item" onClick={() => selectModel("auto")} style={rowStyle(model === "auto")}>
+            <div
+              className="af-menu-item"
+              onClick={() => selectModel("auto")}
+              style={rowStyle(model === "auto")}
+            >
               <Sparkles size={12} color="var(--accent)" />
               <span style={{ flex: 1 }}>{t(locale, "Model.AutoBalanced")}</span>
               {model === "auto" && <Check size={12} color="var(--accent)" />}

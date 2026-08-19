@@ -12,12 +12,7 @@ import {
 import { t } from "@agentflow/localization";
 import { lookupModelMeta } from "./modelPresets";
 import { PanelRightClose, PanelRightOpen, X, Bell, Pin, Archive } from "lucide-react";
-import type {
-  WorkflowPayload,
-  RuntimeStatus,
-  TimelineMessage,
-  BridgeApi,
-} from "./types";
+import type { WorkflowPayload, RuntimeStatus, TimelineMessage, BridgeApi } from "./types";
 import {
   modeToRuntimeMode,
   parseSlashCommand,
@@ -37,11 +32,7 @@ import {
   localizedStatus,
   errorMessage,
 } from "./utils";
-import {
-  PlanApprovalCard,
-  PermissionRequestCard,
-  EscalationRequestCard,
-} from "./cards";
+import { PlanApprovalCard, PermissionRequestCard, EscalationRequestCard } from "./cards";
 import { VirtualTimeline } from "./VirtualTimeline";
 import { Composer } from "./Composer";
 import { ConversationSidebar } from "./ConversationSidebar";
@@ -102,7 +93,12 @@ export default function AgentFlowWorkspace() {
           role: "agent",
           text: "Tool started",
           streaming: false,
-          activity: { category: "tool", status: "started", title: "Tool started · read_file", detail: "auth.ts" },
+          activity: {
+            category: "tool",
+            status: "started",
+            title: "Tool started · read_file",
+            detail: "auth.ts",
+          },
         },
         {
           id: "a2",
@@ -110,7 +106,12 @@ export default function AgentFlowWorkspace() {
           role: "agent",
           text: "Tool completed",
           streaming: false,
-          activity: { category: "tool", status: "completed", title: "Tool completed · read_file", detail: "auth.ts (240 lines)" },
+          activity: {
+            category: "tool",
+            status: "completed",
+            title: "Tool completed · read_file",
+            detail: "auth.ts (240 lines)",
+          },
         },
         {
           id: "a3",
@@ -118,7 +119,12 @@ export default function AgentFlowWorkspace() {
           role: "agent",
           text: "Command started",
           streaming: false,
-          activity: { category: "command", status: "started", title: "Command started", detail: "npm test" },
+          activity: {
+            category: "command",
+            status: "started",
+            title: "Command started",
+            detail: "npm test",
+          },
         },
         {
           id: "a4",
@@ -126,7 +132,12 @@ export default function AgentFlowWorkspace() {
           role: "agent",
           text: "Command completed",
           streaming: false,
-          activity: { category: "command", status: "completed", title: "Command completed", detail: "exit code 0" },
+          activity: {
+            category: "command",
+            status: "completed",
+            title: "Command completed",
+            detail: "exit code 0",
+          },
         },
         {
           id: "a5",
@@ -134,7 +145,12 @@ export default function AgentFlowWorkspace() {
           role: "agent",
           text: "File changes detected",
           streaming: false,
-          activity: { category: "workflow", status: "info", title: "File changes detected", detail: "auth.ts" },
+          activity: {
+            category: "workflow",
+            status: "info",
+            title: "File changes detected",
+            detail: "auth.ts",
+          },
         },
         {
           id: "ag1",
@@ -317,219 +333,224 @@ export default function AgentFlowWorkspace() {
     let unsubscribe: (() => void) | undefined;
     let cancelled = false;
     const run = async () => {
-    try {
-      const transport = await createTauriTransport();
-      if (cancelled) return;
-      const typedBridge = createTypedBridge(transport);
-      setBridge(typedBridge);
-      bridgeRef.current = typedBridge;
-      const applyRuntimeStatus = (status) => {
-        setRuntimeData(status);
-        setModel((current) =>
-          current === "auto" || status.models?.some((candidate) => candidate.id === current)
-            ? current
-            : "auto",
-        );
-        if (status.settings && !settingsHydratedRef.current && !settingsEditedRef.current) {
-          setSettings((current) => ({ ...current, ...runtimeSettingsToUi(status.settings) }));
-          settingsHydratedRef.current = true;
-        }
-        const currentSettings = settingsRef.current || settings;
-        const blockedTaskIds = new Set(
-          (status.tasks || []).filter((task) => task.state === "Blocked").map((task) => task.id),
-        );
-        if (blockedTaskIdsRef.current) {
-          for (const taskId of blockedTaskIds) {
-            if (!blockedTaskIdsRef.current.has(taskId))
-              pushRuntimeNotification(
-                { setting: "notifBlockedTask", titleKey: "SettingsText.TaskBlocked" },
-                "task.blocked",
-              );
+      try {
+        const transport = await createTauriTransport();
+        if (cancelled) return;
+        const typedBridge = createTypedBridge(transport);
+        setBridge(typedBridge);
+        bridgeRef.current = typedBridge;
+        const applyRuntimeStatus = (status) => {
+          setRuntimeData(status);
+          setModel((current) =>
+            current === "auto" || status.models?.some((candidate) => candidate.id === current)
+              ? current
+              : "auto",
+          );
+          if (status.settings && !settingsHydratedRef.current && !settingsEditedRef.current) {
+            setSettings((current) => ({ ...current, ...runtimeSettingsToUi(status.settings) }));
+            settingsHydratedRef.current = true;
           }
-        }
-        blockedTaskIdsRef.current = blockedTaskIds;
-        const conversationLimit = Number.parseInt(currentSettings.recentLimit, 10) || 10;
-        const recentConversations = (status.conversations || []).slice(-conversationLimit);
-        const selectedConversationId = currentSettings.restoreWorkspace
-          ? recentConversations.some(
-              (conversation) => conversation.id === runtimeConversationRef.current,
+          const currentSettings = settingsRef.current || settings;
+          const blockedTaskIds = new Set(
+            (status.tasks || []).filter((task) => task.state === "Blocked").map((task) => task.id),
+          );
+          if (blockedTaskIdsRef.current) {
+            for (const taskId of blockedTaskIds) {
+              if (!blockedTaskIdsRef.current.has(taskId))
+                pushRuntimeNotification(
+                  { setting: "notifBlockedTask", titleKey: "SettingsText.TaskBlocked" },
+                  "task.blocked",
+                );
+            }
+          }
+          blockedTaskIdsRef.current = blockedTaskIds;
+          const conversationLimit = Number.parseInt(currentSettings.recentLimit, 10) || 10;
+          const recentConversations = (status.conversations || []).slice(-conversationLimit);
+          const selectedConversationId = currentSettings.restoreWorkspace
+            ? recentConversations.some(
+                (conversation) => conversation.id === runtimeConversationRef.current,
+              )
+              ? runtimeConversationRef.current
+              : recentConversations.at(-1)?.id || null
+            : null;
+          const retryableRun = status.runs
+            ?.filter(
+              (run) =>
+                run.conversationId === selectedConversationId &&
+                ["Failed", "Cancelled", "Completed"].includes(run.state),
             )
-            ? runtimeConversationRef.current
-            : recentConversations.at(-1)?.id || null
-          : null;
-        const retryableRun = status.runs
-          ?.filter(
-            (run) =>
-              run.conversationId === selectedConversationId &&
-              ["Failed", "Cancelled", "Completed"].includes(run.state),
-          )
-          .at(-1);
-        setFailedRunId(retryableRun?.id || null);
-        setTimelineMessages(
-          replayRuntimeTimeline(
-            status.events?.filter((event) => event.conversationId === selectedConversationId),
-          ),
-        );
-        setActiveProject((current) =>
-          status.projects?.some((project) => project.id === current)
-            ? current
-            : status.projects?.at(-1)?.id || current,
-        );
-        setRuntimeConversationId(selectedConversationId);
-        setPermissionRequest(
-          status.permissions?.find((request) => request.status === "Pending") || null,
-        );
-      };
-      // Mark the in-flight streaming agent message as finished (drop the typing
-      // cursor) and clear the stream ref. Called on run completed/cancelled/
-      // failed and on conversation switch so a partial message never keeps a
-      // pulsing cursor after the run has ended or the user has navigated away.
-      const finalizeStreamingMessage = () => {
-        const messageId = streamMessageRef.current;
-        if (messageId)
-          setTimelineMessages((messages) =>
-            messages.map((message) =>
-              message.id === messageId ? { ...message, streaming: false } : message,
+            .at(-1);
+          setFailedRunId(retryableRun?.id || null);
+          setTimelineMessages(
+            replayRuntimeTimeline(
+              status.events?.filter((event) => event.conversationId === selectedConversationId),
             ),
           );
-        streamMessageRef.current = null;
-      };
-      unsubscribe = typedBridge.subscribe((event) => {
-        const workflowEvent = event;
-        const payload: WorkflowPayload =
-          workflowEvent.payload && typeof workflowEvent.payload === "object"
-            ? (workflowEvent.payload as WorkflowPayload)
-            : {};
-        setLocalizedRuntimeState("Runtime.Event", { event: workflowEvent.type });
-        const notificationRules = {
-          "specification.produced": {
-            setting: "notifPlanApproval",
-            titleKey: "SettingsText.PlanAwaitingApproval",
-          },
-          "run.failed": { setting: "notifAgentFailure", titleKey: "SettingsText.AgentFailure" },
-          "review.completed": {
-            setting: "notifReviewComplete",
-            titleKey: "SettingsText.ReviewComplete",
-          },
-          "validation.completed": {
-            setting: "notifValidationComplete",
-            titleKey: "SettingsText.ValidationComplete",
-          },
-          "integration.completed": {
-            setting: "notifIntegrationReady",
-            titleKey: "SettingsText.IntegrationReady",
-          },
+          setActiveProject((current) =>
+            status.projects?.some((project) => project.id === current)
+              ? current
+              : status.projects?.at(-1)?.id || current,
+          );
+          setRuntimeConversationId(selectedConversationId);
+          setPermissionRequest(
+            status.permissions?.find((request) => request.status === "Pending") || null,
+          );
         };
-        const notificationRule = notificationRules[workflowEvent.type];
-        if (notificationRule) pushRuntimeNotification(notificationRule, workflowEvent.type);
-        const activity = runtimeEventToTimelineActivity({
-          id: workflowEvent.id,
-          type: workflowEvent.type,
-          role: workflowEvent.role,
-          runId: workflowEvent.runId,
-          sequence: workflowEvent.sequence,
-          payload: payload && typeof payload === "object" ? payload : {},
-        });
-        if (activity)
-          setTimelineMessages((messages) =>
-            messages.some((message) => message.id === activity.id)
-              ? messages
-              : [...messages, activity],
-          );
-        if (workflowEvent.changeRequestId) setRuntimeChangeRequestId(workflowEvent.changeRequestId);
-        if (workflowEvent.type === "approval.requested")
-          setPermissionRequest(payload.permissionRequest || payload);
-        if (workflowEvent.type === "approval.resolved") setPermissionRequest(null);
-        if (workflowEvent.type === "run.started") {
-          setSending(true);
-          setActiveRunId(workflowEvent.runId);
-          setFailedRunId(null);
-        }
-        if (workflowEvent.type === "run.completed" || workflowEvent.type === "run.cancelled") {
-          setSending(false);
-          setActiveRunId(null);
-          // A successful completion is not retryable — only failed/cancelled
-          // runs are. Setting failedRunId here showed a misleading "Retry"
-          // button after every successful run.
-          if (workflowEvent.type === "run.cancelled") setFailedRunId(workflowEvent.runId);
-          else setFailedRunId(null);
-          finalizeStreamingMessage();
-        }
-        if (workflowEvent.type === "run.failed") {
-          setSending(false);
-          setActiveRunId(null);
-          setFailedRunId(workflowEvent.runId);
-          finalizeStreamingMessage();
-        }
-        if (workflowEvent.type === "debug.started") setDebugRunning(true);
-        if (workflowEvent.type === "debug.stopped" || workflowEvent.type === "debug.exited")
-          setDebugRunning(false);
-        if (workflowEvent.type === "message.delta") {
-          runtimeStreamSeenRef.current = true;
-          const messageId = streamMessageRef.current || `runtime-agent-${Date.now()}`;
-          streamMessageRef.current = messageId;
-          setTimelineMessages((messages) =>
-            messages.some((message) => message.id === messageId)
-              ? messages.map((message) =>
-                  message.id === messageId
-                    ? { ...message, text: `${message.text}${payload.text || ""}`, streaming: true }
-                    : message,
-                )
-              : [
-                  ...messages,
-                  { id: messageId, role: "agent", text: payload.text || "", streaming: true },
-                ],
-          );
-        }
-        if (workflowEvent.type === "message.completed") {
+        // Mark the in-flight streaming agent message as finished (drop the typing
+        // cursor) and clear the stream ref. Called on run completed/cancelled/
+        // failed and on conversation switch so a partial message never keeps a
+        // pulsing cursor after the run has ended or the user has navigated away.
+        const finalizeStreamingMessage = () => {
           const messageId = streamMessageRef.current;
-          const escalation = parseEscalationRequest(payload.text);
-          const finalText = escalation ? stripEscalationMarker(payload.text) : payload.text;
           if (messageId)
             setTimelineMessages((messages) =>
               messages.map((message) =>
-                message.id === messageId
-                  ? { ...message, text: finalText || message.text, streaming: false }
-                  : message,
+                message.id === messageId ? { ...message, streaming: false } : message,
               ),
             );
           streamMessageRef.current = null;
-          if (escalation) setPendingEscalation(escalation);
-        }
-        if (
-          [
-            "specification.produced",
-            "patchset.created",
-            "validation.completed",
-            "review.completed",
-            "integration.completed",
-            "run.completed",
-            "run.failed",
-            "run.cancelled",
-            "run.retried",
-            "session.resumed",
-          ].includes(workflowEvent.type)
-        ) {
-          void typedBridge
-            .status()
-            .then(applyRuntimeStatus)
-            .catch(() => undefined);
-        }
-      });
-      typedBridge
-        .status()
-        .then((status) => {
-          const runtimeStatus = status as RuntimeStatus;
-          applyRuntimeStatus(runtimeStatus);
-          setPermissionRequest(
-            runtimeStatus.permissions?.find((request) => request.status === "Pending") || null,
-          );
-          setLocalizedRuntimeState("Runtime.Connected");
-        })
-        .catch(() => setLocalizedRuntimeState("Runtime.Unavailable"));
-    } catch {
-      setLocalizedRuntimeState("Runtime.Unavailable");
-    }
+        };
+        unsubscribe = typedBridge.subscribe((event) => {
+          const workflowEvent = event;
+          const payload: WorkflowPayload =
+            workflowEvent.payload && typeof workflowEvent.payload === "object"
+              ? (workflowEvent.payload as WorkflowPayload)
+              : {};
+          setLocalizedRuntimeState("Runtime.Event", { event: workflowEvent.type });
+          const notificationRules = {
+            "specification.produced": {
+              setting: "notifPlanApproval",
+              titleKey: "SettingsText.PlanAwaitingApproval",
+            },
+            "run.failed": { setting: "notifAgentFailure", titleKey: "SettingsText.AgentFailure" },
+            "review.completed": {
+              setting: "notifReviewComplete",
+              titleKey: "SettingsText.ReviewComplete",
+            },
+            "validation.completed": {
+              setting: "notifValidationComplete",
+              titleKey: "SettingsText.ValidationComplete",
+            },
+            "integration.completed": {
+              setting: "notifIntegrationReady",
+              titleKey: "SettingsText.IntegrationReady",
+            },
+          };
+          const notificationRule = notificationRules[workflowEvent.type];
+          if (notificationRule) pushRuntimeNotification(notificationRule, workflowEvent.type);
+          const activity = runtimeEventToTimelineActivity({
+            id: workflowEvent.id,
+            type: workflowEvent.type,
+            role: workflowEvent.role,
+            runId: workflowEvent.runId,
+            sequence: workflowEvent.sequence,
+            payload: payload && typeof payload === "object" ? payload : {},
+          });
+          if (activity)
+            setTimelineMessages((messages) =>
+              messages.some((message) => message.id === activity.id)
+                ? messages
+                : [...messages, activity],
+            );
+          if (workflowEvent.changeRequestId)
+            setRuntimeChangeRequestId(workflowEvent.changeRequestId);
+          if (workflowEvent.type === "approval.requested")
+            setPermissionRequest(payload.permissionRequest || payload);
+          if (workflowEvent.type === "approval.resolved") setPermissionRequest(null);
+          if (workflowEvent.type === "run.started") {
+            setSending(true);
+            setActiveRunId(workflowEvent.runId);
+            setFailedRunId(null);
+          }
+          if (workflowEvent.type === "run.completed" || workflowEvent.type === "run.cancelled") {
+            setSending(false);
+            setActiveRunId(null);
+            // A successful completion is not retryable — only failed/cancelled
+            // runs are. Setting failedRunId here showed a misleading "Retry"
+            // button after every successful run.
+            if (workflowEvent.type === "run.cancelled") setFailedRunId(workflowEvent.runId);
+            else setFailedRunId(null);
+            finalizeStreamingMessage();
+          }
+          if (workflowEvent.type === "run.failed") {
+            setSending(false);
+            setActiveRunId(null);
+            setFailedRunId(workflowEvent.runId);
+            finalizeStreamingMessage();
+          }
+          if (workflowEvent.type === "debug.started") setDebugRunning(true);
+          if (workflowEvent.type === "debug.stopped" || workflowEvent.type === "debug.exited")
+            setDebugRunning(false);
+          if (workflowEvent.type === "message.delta") {
+            runtimeStreamSeenRef.current = true;
+            const messageId = streamMessageRef.current || `runtime-agent-${Date.now()}`;
+            streamMessageRef.current = messageId;
+            setTimelineMessages((messages) =>
+              messages.some((message) => message.id === messageId)
+                ? messages.map((message) =>
+                    message.id === messageId
+                      ? {
+                          ...message,
+                          text: `${message.text}${payload.text || ""}`,
+                          streaming: true,
+                        }
+                      : message,
+                  )
+                : [
+                    ...messages,
+                    { id: messageId, role: "agent", text: payload.text || "", streaming: true },
+                  ],
+            );
+          }
+          if (workflowEvent.type === "message.completed") {
+            const messageId = streamMessageRef.current;
+            const escalation = parseEscalationRequest(payload.text);
+            const finalText = escalation ? stripEscalationMarker(payload.text) : payload.text;
+            if (messageId)
+              setTimelineMessages((messages) =>
+                messages.map((message) =>
+                  message.id === messageId
+                    ? { ...message, text: finalText || message.text, streaming: false }
+                    : message,
+                ),
+              );
+            streamMessageRef.current = null;
+            if (escalation) setPendingEscalation(escalation);
+          }
+          if (
+            [
+              "specification.produced",
+              "patchset.created",
+              "validation.completed",
+              "review.completed",
+              "integration.completed",
+              "run.completed",
+              "run.failed",
+              "run.cancelled",
+              "run.retried",
+              "session.resumed",
+            ].includes(workflowEvent.type)
+          ) {
+            void typedBridge
+              .status()
+              .then(applyRuntimeStatus)
+              .catch(() => undefined);
+          }
+        });
+        typedBridge
+          .status()
+          .then((status) => {
+            const runtimeStatus = status as RuntimeStatus;
+            applyRuntimeStatus(runtimeStatus);
+            setPermissionRequest(
+              runtimeStatus.permissions?.find((request) => request.status === "Pending") || null,
+            );
+            setLocalizedRuntimeState("Runtime.Connected");
+          })
+          .catch(() => setLocalizedRuntimeState("Runtime.Unavailable"));
+      } catch {
+        setLocalizedRuntimeState("Runtime.Unavailable");
+      }
     };
     void run();
     return () => {
@@ -876,7 +897,9 @@ export default function AgentFlowWorkspace() {
         setLocalizedRuntimeState("Runtime.DefaultProjectDirectorySet", { path: selected });
       }
     } catch (error) {
-      setLocalizedRuntimeState("Runtime.DefaultProjectDirectoryFailed", { error: errorMessage(error) });
+      setLocalizedRuntimeState("Runtime.DefaultProjectDirectoryFailed", {
+        error: errorMessage(error),
+      });
     }
   };
 
@@ -898,7 +921,9 @@ export default function AgentFlowWorkspace() {
           .then(setRepositoryStatus)
           .then(() => setLocalizedRuntimeState("Runtime.RepositoryStatusRefreshed"))
           .catch((error) =>
-            setLocalizedRuntimeState("Runtime.RepositoryStatusFailed", { error: errorMessage(error) }),
+            setLocalizedRuntimeState("Runtime.RepositoryStatusFailed", {
+              error: errorMessage(error),
+            }),
           );
       } else setLocalizedRuntimeState("Runtime.RepositoryStatusUnavailable");
       return true;
@@ -950,7 +975,9 @@ export default function AgentFlowWorkspace() {
           decision: decision.replaceAll("-", " "),
         });
       } catch (error) {
-        setLocalizedRuntimeState("Runtime.PermissionResolutionFailed", { error: errorMessage(error) });
+        setLocalizedRuntimeState("Runtime.PermissionResolutionFailed", {
+          error: errorMessage(error),
+        });
       }
       return;
     }
@@ -1331,10 +1358,9 @@ export default function AgentFlowWorkspace() {
         (!runtimeChangeRequestId || event.changeRequestId === runtimeChangeRequestId),
     )
     .at(-1)?.payload;
-  const workflowPhase =
-    currentChangeRequest?.state
-      ? localizedStatus(locale, currentChangeRequest.state)
-      : t(locale, "Inspector.NoActiveChangeRequest");
+  const workflowPhase = currentChangeRequest?.state
+    ? localizedStatus(locale, currentChangeRequest.state)
+    : t(locale, "Inspector.NoActiveChangeRequest");
   const completedTaskCount = displayTasks.filter((task) =>
     ["Completed", "Approved", "Integrated"].includes(task.status),
   ).length;
@@ -1461,7 +1487,8 @@ export default function AgentFlowWorkspace() {
   const rejectPatchSet = (patchSetId) => {
     const finding =
       displayFindings.find(
-        (item) => item.status !== "Resolved" && (!item.patchSetId || item.patchSetId === patchSetId),
+        (item) =>
+          item.status !== "Resolved" && (!item.patchSetId || item.patchSetId === patchSetId),
       ) || displayFindings[0];
     setMode("Build");
     setTab("Overview");

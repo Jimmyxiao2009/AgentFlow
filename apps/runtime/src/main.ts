@@ -111,47 +111,53 @@ async function handle(line: string): Promise<void> {
                 ? application.stopDebugProcess(request.payload)
                 : request.method === "conversation.create"
                   ? application.createConversation(request.payload)
-            : request.method === "message.send"
-              ? await application.sendMessage(request.payload)
-              : request.method === "plan.approval"
-                ? application.approvePlan(request.payload)
-                : request.method === "permission.resolve"
-                  ? await application.resolvePermission(request.payload)
-                  : request.method === "run.stop"
-                    ? application.stopRun(request.payload)
-                    : request.method === "task.run"
-                      ? await application.runTask(request.payload)
-                      : request.method === "task.run.ready"
-                        ? await application.runReadyTasks(request.payload)
-                        : request.method === "run.retry"
-                          ? await application.retryRun(request.payload)
-                          : request.method === "run.resume"
-                            ? await application.retryRun(request.payload, true)
-                            : request.method === "validation.run"
-                              ? await application.runValidation(request.payload)
-                              : request.method === "review.start"
-                                ? await application.startReview(request.payload)
-                                : request.method === "integration.apply"
-                                  ? await application.integrate(request.payload)
-                                  : request.method === "pull-request.project"
-                                    ? application.projectPullRequest(request.payload)
-                                    : request.method === "settings.get"
-                                      ? application.getSettingsForRenderer()
-                                      : request.method === "settings.save"
-                                        ? await (async () => {
-                                            const saved = application.saveSettings(request.payload);
-                                            vercelAiAdapter.setProviders(
-                                              saved.aiProviders,
-                                              saved.defaultModelId,
-                                            );
-                                            await application.probeProfiles(new AbortController().signal);
-                                            return saved;
-                                          })()
-                                        : request.method === "profiles.probe"
-                                          ? application.probeProfiles(new AbortController().signal)
-                                          : request.method === "artifact.read"
-                                            ? application.readArtifact(request.payload)
-                                            : application.status();
+                  : request.method === "message.send"
+                    ? await application.sendMessage(request.payload)
+                    : request.method === "plan.approval"
+                      ? application.approvePlan(request.payload)
+                      : request.method === "permission.resolve"
+                        ? await application.resolvePermission(request.payload)
+                        : request.method === "run.stop"
+                          ? application.stopRun(request.payload)
+                          : request.method === "task.run"
+                            ? await application.runTask(request.payload)
+                            : request.method === "task.run.ready"
+                              ? await application.runReadyTasks(request.payload)
+                              : request.method === "run.retry"
+                                ? await application.retryRun(request.payload)
+                                : request.method === "run.resume"
+                                  ? await application.retryRun(request.payload, true)
+                                  : request.method === "validation.run"
+                                    ? await application.runValidation(request.payload)
+                                    : request.method === "review.start"
+                                      ? await application.startReview(request.payload)
+                                      : request.method === "integration.apply"
+                                        ? await application.integrate(request.payload)
+                                        : request.method === "pull-request.project"
+                                          ? application.projectPullRequest(request.payload)
+                                          : request.method === "settings.get"
+                                            ? application.getSettingsForRenderer()
+                                            : request.method === "settings.save"
+                                              ? await (async () => {
+                                                  const saved = application.saveSettings(
+                                                    request.payload,
+                                                  );
+                                                  vercelAiAdapter.setProviders(
+                                                    saved.aiProviders,
+                                                    saved.defaultModelId,
+                                                  );
+                                                  await application.probeProfiles(
+                                                    new AbortController().signal,
+                                                  );
+                                                  return saved;
+                                                })()
+                                              : request.method === "profiles.probe"
+                                                ? application.probeProfiles(
+                                                    new AbortController().signal,
+                                                  )
+                                                : request.method === "artifact.read"
+                                                  ? application.readArtifact(request.payload)
+                                                  : application.status();
     write(success(request.id, result));
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Request failed";

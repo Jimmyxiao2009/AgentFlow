@@ -71,7 +71,12 @@ describe("explainable auto routing", () => {
       },
       {
         profiles: [
-          { id: "profile-vercel-ai", name: "Vercel AI SDK", adapterId: "vercel-ai", status: "Ready" },
+          {
+            id: "profile-vercel-ai",
+            name: "Vercel AI SDK",
+            adapterId: "vercel-ai",
+            status: "Ready",
+          },
         ],
         models: [],
         availableAdapters: ["vercel-ai"],

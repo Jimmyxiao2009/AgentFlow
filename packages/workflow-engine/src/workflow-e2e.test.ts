@@ -197,7 +197,15 @@ describe("isolated worker vertical slice", () => {
     gitRun(repository, ["commit", "-qam", "patch"]);
     const patchCommit = (await git(repository, ["rev-parse", "HEAD"])).stdout.trim();
     gitRun(repository, ["checkout", "-q", "--detach", base]);
-    gitRun(repository, ["worktree", "add", "-q", "-b", "fixture-integration", integrationPath, base]);
+    gitRun(repository, [
+      "worktree",
+      "add",
+      "-q",
+      "-b",
+      "fixture-integration",
+      integrationPath,
+      base,
+    ]);
     // Apply the patch once so it is already present.
     gitRun(integrationPath, ["cherry-pick", patchCommit]);
     const service = new IntegrationService();

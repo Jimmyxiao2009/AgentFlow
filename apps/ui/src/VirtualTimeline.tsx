@@ -34,7 +34,11 @@ export const VirtualTimeline = React.memo(function VirtualTimeline({
         if (currentGroup) {
           currentGroup.items.push(message);
         } else {
-          currentGroup = { id: `activity-group-${message.id}`, kind: "activity-group", items: [message] };
+          currentGroup = {
+            id: `activity-group-${message.id}`,
+            kind: "activity-group",
+            items: [message],
+          };
           result.push(currentGroup);
         }
       } else {
@@ -148,7 +152,9 @@ export const VirtualTimeline = React.memo(function VirtualTimeline({
                       ) : (
                         <Circle size={10} color="var(--accent)" />
                       )}
-                      <span style={{ flex: 1 }}>{summarizeActivityGroup(message.items, locale)}</span>
+                      <span style={{ flex: 1 }}>
+                        {summarizeActivityGroup(message.items, locale)}
+                      </span>
                       {expandedGroups.has(message.id) ? (
                         <ChevronDown size={12} color="var(--text-muted)" />
                       ) : (

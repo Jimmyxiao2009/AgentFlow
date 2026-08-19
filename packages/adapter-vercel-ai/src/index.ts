@@ -97,15 +97,19 @@ export class VercelAiAdapter implements AgentAdapter {
           body && typeof body === "object" && Array.isArray((body as { data?: unknown }).data)
             ? (body as { data: unknown[] }).data
             : [];
-        const models = [...new Set(
-          data
-            .map((item) =>
-              item && typeof item === "object" && typeof (item as { id?: unknown }).id === "string"
-                ? (item as { id: string }).id.trim()
-                : "",
-            )
-            .filter(Boolean),
-        )];
+        const models = [
+          ...new Set(
+            data
+              .map((item) =>
+                item &&
+                typeof item === "object" &&
+                typeof (item as { id?: unknown }).id === "string"
+                  ? (item as { id: string }).id.trim()
+                  : "",
+              )
+              .filter(Boolean),
+          ),
+        ];
         this.discoveredModels.set(provider.id, models);
       } catch (error) {
         if (signal.aborted) throw error;
@@ -161,9 +165,7 @@ export class VercelAiAdapter implements AgentAdapter {
       apiKey: provider.apiKey,
     });
     const build =
-      request.intent === "build"
-        ? this.buildTools(session, request.permissionProfile)
-        : undefined;
+      request.intent === "build" ? this.buildTools(session, request.permissionProfile) : undefined;
     const result = streamText({
       model: sdkProvider.chatModel(model),
       system: this.systemPrompt(request.mode, session.role, request.intent === "build"),
@@ -228,7 +230,7 @@ export class VercelAiAdapter implements AgentAdapter {
     const discovered = this.discoveredModels.get(provider.id);
     return discovered?.length
       ? discovered
-      : provider.models?.filter(Boolean) ?? (provider.model ? [provider.model] : []);
+      : (provider.models?.filter(Boolean) ?? (provider.model ? [provider.model] : []));
   }
 
   private resolveProvider(modelId?: string): { provider: AiProviderConfig; model: string } {
@@ -242,7 +244,8 @@ export class VercelAiAdapter implements AgentAdapter {
       if (configuredDefault) return configuredDefault;
       const provider = this.providers.find((item) => this.providerModels(item).length > 0);
       const model = provider && this.providerModels(provider)[0];
-      if (!provider || !model) throw new Error("No models configured for the available AI providers.");
+      if (!provider || !model)
+        throw new Error("No models configured for the available AI providers.");
       return { provider, model };
     }
     const resolved = this.resolveConfiguredModel(modelId);
@@ -250,13 +253,17 @@ export class VercelAiAdapter implements AgentAdapter {
     return resolved;
   }
 
-  private resolveConfiguredModel(modelId: string): { provider: AiProviderConfig; model: string } | undefined {
+  private resolveConfiguredModel(
+    modelId: string,
+  ): { provider: AiProviderConfig; model: string } | undefined {
     const separator = modelId.indexOf("::");
     if (separator <= 0) return undefined;
     const providerId = modelId.slice(0, separator);
     const model = modelId.slice(separator + 2);
     const provider = this.providers.find((item) => item.id === providerId);
-    return provider && this.providerModels(provider).includes(model) ? { provider, model } : undefined;
+    return provider && this.providerModels(provider).includes(model)
+      ? { provider, model }
+      : undefined;
   }
 
   private baseUrl(endpoint: string): string {
@@ -264,10 +271,7 @@ export class VercelAiAdapter implements AgentAdapter {
     return base.endsWith("/v1") ? base : `${base}/v1`;
   }
 
-  private buildTools(
-    session: AgentSessionHandle,
-    permissionProfile?: PermissionProfileName,
-  ) {
+  private buildTools(session: AgentSessionHandle, permissionProfile?: PermissionProfileName) {
     const workspacePath = session.workspacePath;
     if (!workspacePath) throw new Error("Build mode requires a repository workspace");
     const root = path.resolve(workspacePath);
@@ -293,7 +297,8 @@ export class VercelAiAdapter implements AgentAdapter {
       permissionProfile === "Elevated with Approval" ||
       permissionProfile === "Custom";
     const write_file = tool({
-      description: "Create or replace one UTF-8 text file inside the current repository. Use only for the requested small fix.",
+      description:
+        "Create or replace one UTF-8 text file inside the current repository. Use only for the requested small fix.",
       inputSchema: z.object({
         path: z.string().min(1).max(500),
         content: z.string().max(500_000),
@@ -309,7 +314,8 @@ export class VercelAiAdapter implements AgentAdapter {
     return {
       tools: {
         read_file: tool({
-          description: "Read a UTF-8 text file from the current repository. Use this before editing a file.",
+          description:
+            "Read a UTF-8 text file from the current repository. Use this before editing a file.",
           inputSchema: z.object({ path: z.string().min(1).max(500) }),
           execute: async ({ path: filePath }) => ({
             path: filePath,
@@ -329,9 +335,12 @@ export class VercelAiAdapter implements AgentAdapter {
     build: boolean,
   ): string {
     const roleInstructions: Record<string, string> = {
-      Planner: "You are a read-only planning agent. Analyze the codebase and return a structured implementation plan. Do not edit files.",
-      Worker: "You are an implementation agent. Make only the requested changes in the assigned worktree.",
-      Reviewer: "You are an independent code reviewer. Identify correctness, security, and quality issues.",
+      Planner:
+        "You are a read-only planning agent. Analyze the codebase and return a structured implementation plan. Do not edit files.",
+      Worker:
+        "You are an implementation agent. Make only the requested changes in the assigned worktree.",
+      Reviewer:
+        "You are an independent code reviewer. Identify correctness, security, and quality issues.",
       Investigator: "You are a read-only investigation agent. Answer questions about the codebase.",
     };
     const modeInstructions: Record<string, string> = {

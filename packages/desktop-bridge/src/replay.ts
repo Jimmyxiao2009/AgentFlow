@@ -175,9 +175,10 @@ export function runtimeEventToTimelineActivity(
   else if (type === "debug.exited")
     activity = {
       category: "command",
-      status: payload.error || (typeof payload.exitCode === "number" && payload.exitCode !== 0)
-        ? "failed"
-        : "completed",
+      status:
+        payload.error || (typeof payload.exitCode === "number" && payload.exitCode !== 0)
+          ? "failed"
+          : "completed",
       title: "Debug process exited",
       detail: shortValue(payload.error) ?? shortValue(payload.exitCode),
     };

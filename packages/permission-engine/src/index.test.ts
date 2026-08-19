@@ -24,7 +24,12 @@ describe("permission engine", () => {
       commandAllowed("npm run build /etc/passwd", profile, "C:/repo/worktree", "C:/repo/worktree"),
     ).toBe(false);
     expect(
-      commandAllowed("git show --output=../escape", profile, "C:/repo/worktree", "C:/repo/worktree"),
+      commandAllowed(
+        "git show --output=../escape",
+        profile,
+        "C:/repo/worktree",
+        "C:/repo/worktree",
+      ),
     ).toBe(false);
     // A plain allowed command still passes.
     expect(commandAllowed("npm test", profile, "C:/repo/worktree", "C:/repo/worktree")).toBe(true);

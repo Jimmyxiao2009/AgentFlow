@@ -37,7 +37,13 @@ import {
   effectivePermissions,
   isPermanentlyDenied,
 } from "@agentflow/permission-engine";
-import { lines, Logger, ProcessSupervisor, redactSecrets, redactStructured } from "@agentflow/process-supervisor";
+import {
+  lines,
+  Logger,
+  ProcessSupervisor,
+  redactSecrets,
+  redactStructured,
+} from "@agentflow/process-supervisor";
 import { parseMethodPayload, type AdapterEvent } from "@agentflow/protocol";
 import { route } from "@agentflow/routing-engine";
 import {
@@ -72,9 +78,7 @@ export function classifyPlanRisk(text: string): "Low" | "High" {
   // "networking". The previous \b(term)\b anchors required an exact word, so
   // "authentication" did not match "auth" and a risky plan was misclassified
   // as Low risk and auto-approved.
-  return /(auth|credential|database|migration|network|depend|secur|delet|public|schema)/i.test(
-    text,
-  )
+  return /(auth|credential|database|migration|network|depend|secur|delet|public|schema)/i.test(text)
     ? "High"
     : "Low";
 }
@@ -2744,55 +2748,67 @@ export class AgentFlowApplication {
       packageScripts = undefined;
     }
     const checks = task.contract.requiredValidationCommands
-      .map((command): {
-        name: string;
-        executable: string;
-        args: string[];
-        command: string;
-        blocking: boolean;
-      } | undefined => {
-        const runScript = command.startsWith("npm run ") ? command.slice("npm run ".length) : null;
-        if (command === "npm test")
+      .map(
+        (
+          command,
+        ):
+          | {
+              name: string;
+              executable: string;
+              args: string[];
+              command: string;
+              blocking: boolean;
+            }
+          | undefined => {
+          const runScript = command.startsWith("npm run ")
+            ? command.slice("npm run ".length)
+            : null;
+          if (command === "npm test")
+            return {
+              name: "tests",
+              executable: npm,
+              args: ["test"],
+              command,
+              blocking: this.settings.blockOnFailingValidation,
+            };
+          if (runScript) {
+            // Skip npm scripts the project does not define (non-npm or partial
+            // toolchains) so validation isn't blocked by a missing script.
+            if (packageScripts && !packageScripts.has(runScript)) return undefined;
+            return {
+              name: runScript.replaceAll(":", "-"),
+              executable: npm,
+              args: ["run", runScript],
+              command,
+              blocking: this.settings.blockOnFailingValidation || runScript === "security:scan",
+            };
+          }
+          // Support non-npm commands (e.g. cargo test, make test, go test, pnpm test)
+          const parts = command.split(/\s+/).filter(Boolean);
+          if (parts.length === 0) return undefined;
+          const executable = parts[0]!;
+          const args = parts.slice(1);
+          const name = args.length ? `${executable}-${args[0]}` : executable;
           return {
-            name: "tests",
-            executable: npm,
-            args: ["test"],
+            name: name.slice(0, 60),
+            executable,
+            args,
             command,
             blocking: this.settings.blockOnFailingValidation,
           };
-        if (runScript) {
-          // Skip npm scripts the project does not define (non-npm or partial
-          // toolchains) so validation isn't blocked by a missing script.
-          if (packageScripts && !packageScripts.has(runScript)) return undefined;
-          return {
-            name: runScript.replaceAll(":", "-"),
-            executable: npm,
-            args: ["run", runScript],
-            command,
-            blocking: this.settings.blockOnFailingValidation || runScript === "security:scan",
-          };
-        }
-        // Support non-npm commands (e.g. cargo test, make test, go test, pnpm test)
-        const parts = command.split(/\s+/).filter(Boolean);
-        if (parts.length === 0) return undefined;
-        const executable = parts[0]!;
-        const args = parts.slice(1);
-        const name = args.length ? `${executable}-${args[0]}` : executable;
-        return {
-          name: name.slice(0, 60),
-          executable,
-          args,
-          command,
-          blocking: this.settings.blockOnFailingValidation,
-        };
-      })
-      .filter((check): check is {
-        name: string;
-        executable: string;
-        args: string[];
-        command: string;
-        blocking: boolean;
-      } => Boolean(check));
+        },
+      )
+      .filter(
+        (
+          check,
+        ): check is {
+          name: string;
+          executable: string;
+          args: string[];
+          command: string;
+          blocking: boolean;
+        } => Boolean(check),
+      );
     this.emit({
       type: "validation.started",
       aggregateId: patchSet.id,
@@ -2862,7 +2878,9 @@ export class AgentFlowApplication {
       (run) => run.patchSetId === patchSet.id,
     );
     if (validations.length === 0)
-      throw new Error(`PatchSet ${patchSet.id} has no validation runs; run validation before review`);
+      throw new Error(
+        `PatchSet ${patchSet.id} has no validation runs; run validation before review`,
+      );
     assertDeterministicGate(validations);
     const reviewerRunId = id("run");
     if (reviewerRunId === patchSet.producingRunId)
@@ -3064,7 +3082,9 @@ export class AgentFlowApplication {
       // Remove the read-only review worktree now that the review is done — it
       // has no further use and would otherwise leak a worktree directory and
       // branch on every review. Mirror the task path's cleanup.
-      await this.worktrees.remove(project.repositoryPath, reviewWorkspace.path).catch(() => undefined);
+      await this.worktrees
+        .remove(project.repositoryPath, reviewWorkspace.path)
+        .catch(() => undefined);
       reviewWorkspace.status = "Released";
       this.store.saveProjection(`workspace:${reviewWorkspace.id}`, 1, reviewWorkspace);
     } catch (error: unknown) {

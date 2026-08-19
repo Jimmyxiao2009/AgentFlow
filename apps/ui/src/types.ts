@@ -45,10 +45,28 @@ export type ProjectSummary = {
 };
 export type RuntimeStatus = Record<string, unknown> & {
   settings?: Record<string, unknown>;
-  tasks?: Array<{ id: string; key: string; title: string; state?: string; dependencyIds?: string[] }>;
+  tasks?: Array<{
+    id: string;
+    key: string;
+    title: string;
+    state?: string;
+    dependencyIds?: string[];
+  }>;
   conversations?: Array<{ id: string }>;
-  runs?: Array<{ id: string; conversationId?: string; taskId?: string; role?: string; state?: string; completedAt?: string }>;
-  events?: Array<{ conversationId?: string; changeRequestId?: string; type?: string; payload?: unknown }>;
+  runs?: Array<{
+    id: string;
+    conversationId?: string;
+    taskId?: string;
+    role?: string;
+    state?: string;
+    completedAt?: string;
+  }>;
+  events?: Array<{
+    conversationId?: string;
+    changeRequestId?: string;
+    type?: string;
+    payload?: unknown;
+  }>;
   projects?: ProjectSummary[];
   permissions?: Array<{ status?: string }>;
   resumeAvailableRunIds?: string[];

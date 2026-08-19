@@ -18,11 +18,7 @@ import {
 } from "lucide-react";
 import { agentFlowAccentColors } from "@agentflow/design-system";
 
-export const modeOptions = [
-  { id: "Explore" },
-  { id: "Plan" },
-  { id: "Build" },
-];
+export const modeOptions = [{ id: "Explore" }, { id: "Plan" }, { id: "Build" }];
 
 export const modeToRuntimeMode: Record<string, "Ask" | "Plan" | "Implement"> = {
   Explore: "Ask",
@@ -47,7 +43,8 @@ export const slashCommands: SlashCommand[] = [
 export function parseSlashCommand(input: string) {
   const trimmed = input.trimStart();
   const [token = "", ...argumentsList] = trimmed.split(/\s+/);
-  const command = slashCommands.find((candidate) => candidate.command === token.toLowerCase()) ?? null;
+  const command =
+    slashCommands.find((candidate) => candidate.command === token.toLowerCase()) ?? null;
   return {
     command,
     argument: argumentsList.join(" "),

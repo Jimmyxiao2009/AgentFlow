@@ -171,7 +171,9 @@ describe("application settings security", () => {
       app.store as unknown as {
         db: { prepare: (sql: string) => { all: () => Array<{ detail: string }> } };
       }
-    ).db.prepare("SELECT detail FROM audit_events").all();
+    ).db
+      .prepare("SELECT detail FROM audit_events")
+      .all();
     const auditText = auditRows.map((row) => row.detail).join("\n");
     expect(auditText).not.toContain(secret);
     expect(auditText).toContain("[REDACTED]");
@@ -370,9 +372,7 @@ describe("application permissions", () => {
       const result = await run;
       expect(result).toBeInstanceOf(Error);
       expect((result as Error).message).toContain("Permission denied");
-      expect(app.status().permissions.find((item) => item.id === requestId)?.status).toBe(
-        "Denied",
-      );
+      expect(app.status().permissions.find((item) => item.id === requestId)?.status).toBe("Denied");
     } finally {
       app.close();
       rmSync(root, { recursive: true, force: true });

@@ -10,11 +10,11 @@
 
 **Monorepo 布局**：
 
-| 位置 | 内容 |
-|---|---|
-| `apps/ui` | React 渲染层（19 个文件，AgentFlowWorkspace.tsx 1880 行为中枢） |
-| `apps/runtime` | sidecar 入口（main.ts 217 行：白名单分发 + stdin/stdout JSONL） |
-| `apps/desktop` | Rust 壳（lib.rs 730 行：进程管理、桥接、安全边界） |
+| 位置             | 内容                                                                                                                                |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/ui`        | React 渲染层（19 个文件，AgentFlowWorkspace.tsx 1880 行为中枢）                                                                     |
+| `apps/runtime`   | sidecar 入口（main.ts 217 行：白名单分发 + stdin/stdout JSONL）                                                                     |
+| `apps/desktop`   | Rust 壳（lib.rs 730 行：进程管理、桥接、安全边界）                                                                                  |
 | `packages/` × 15 | domain（叶子）→ routing/permission/agent-runtime → workflow-engine → application（3289 行上帝类）→ 适配器（sdk/fake/maf/vercel-ai） |
 
 **质量门槛现状**（项目自带脚本）：typecheck ✅ 通过、ESLint ✅ 零告警、vitest 62/62 ✅ 通过、密钥扫描 ✅ 通过。静态健康度良好——但下文说明这些绿灯有相当水分。
@@ -90,13 +90,13 @@
 
 ## 四、总体结论
 
-| 维度 | 评价 |
-|---|---|
-| 架构设计 | ★★★★★ 分层、边界、安全模型设计明显高水准 |
+| 维度       | 评价                                                                   |
+| ---------- | ---------------------------------------------------------------------- |
+| 架构设计   | ★★★★★ 分层、边界、安全模型设计明显高水准                               |
 | 实现完成度 | ★★★☆☆ 骨架完整，但 CLI 适配（产品核心）未接线，生产路径是 API key 直连 |
-| 实现质量 | ★★★☆☆ 主链路扎实，但有 1 个致命 bug + 一批高严重度问题 |
-| 测试 | ★★☆☆☆ 数量可观但全是正向断言，安全关键组件大面积零覆盖 |
-| 工程配套 | ★★★★☆ CI 三平台矩阵、文档、性能记录、本地化都做得好 |
+| 实现质量   | ★★★☆☆ 主链路扎实，但有 1 个致命 bug + 一批高严重度问题                 |
+| 测试       | ★★☆☆☆ 数量可观但全是正向断言，安全关键组件大面积零覆盖                 |
+| 工程配套   | ★★★★☆ CI 三平台矩阵、文档、性能记录、本地化都做得好                    |
 
 一句话总结：**这是一份"设计远超实现"的项目**——安全架构的图纸上几乎每条红线都有对应代码，但存在一个让 UI 实时事件全丢的 schema 不同步 bug、明文密钥三处落盘、并发/资源泄漏类缺陷，以及测试只验证"理想路径"导致的系统性漏检。产品定义中"复用 CLI 订阅"的核心卖点目前实际未实现。
 
@@ -117,6 +117,7 @@
 下列问题已在本轮迭代中修复并提交到 main（每项附回归测试，测试数 63 → 73）：
 
 **致命 / 高**
+
 - ✅ 问题1：`bridgeEventSchema` 补 `source` 字段 —— 实时事件不再被静默丢弃（protocol + 回归测试）。
 - ✅ 问题2：密钥脱敏 —— 审计日志用 `redactStructured`；UI 不再把 `apiKey` 写 localStorage；设置同步去抖 400ms。
 - ✅ 问题3：重试上限绕过 —— attempt 在 run 创建时即 `previous.attempt + 1`，失败链持久化正确 attempt。
@@ -127,6 +128,7 @@
 - ✅ 问题8（部分）：见下方"已知遗留"。
 
 **中**
+
 - ✅ 集成部分成功：重用集成 worktree 时先 `reset --hard` 到 baseCommit；空 cherry-pick 不再误判为 Conflict（+ e2e 回归）。
 - ✅ `classifyPlanRisk` 派生词匹配（authentication/migrations/credentials/dependencies）（+ 回归）。
 - ✅ 零校验进评审：`assertDeterministicGate([])` 现在抛错；blocking 检查非 Passed 状态均拦截；`startReview` 要求至少一次校验。

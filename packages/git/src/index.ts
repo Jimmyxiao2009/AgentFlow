@@ -26,8 +26,7 @@ export async function ensureGitRepository(repositoryPath: string): Promise<void>
   const check = await git(repositoryPath, ["rev-parse", "--is-inside-work-tree"]);
   if (check.exitCode !== 0 || check.stdout.trim() !== "true") {
     const init = await git(repositoryPath, ["init"]);
-    if (init.exitCode !== 0)
-      throw new Error(`Unable to initialize Git repository: ${init.stderr}`);
+    if (init.exitCode !== 0) throw new Error(`Unable to initialize Git repository: ${init.stderr}`);
   }
   const head = await git(repositoryPath, ["rev-parse", "HEAD"]);
   if (head.exitCode !== 0) {
@@ -41,8 +40,7 @@ export async function ensureGitRepository(repositoryPath: string): Promise<void>
       "-m",
       "Initial commit (AgentFlow)",
     ]);
-    if (commit.exitCode !== 0)
-      throw new Error(`Unable to create initial commit: ${commit.stderr}`);
+    if (commit.exitCode !== 0) throw new Error(`Unable to create initial commit: ${commit.stderr}`);
   }
 }
 

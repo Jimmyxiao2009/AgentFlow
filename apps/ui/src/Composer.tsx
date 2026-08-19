@@ -66,9 +66,9 @@ export const Composer = React.memo(function Composer({
     : !runtimeConversationId
       ? t(locale, "Runtime.OpenConversationBeforeSend")
       : undefined;
-  const sendBlockedReason = runtimeBlockedReason || (!composerText.trim()
-    ? t(locale, "Composer.EnterMessageToSend")
-    : undefined);
+  const sendBlockedReason =
+    runtimeBlockedReason ||
+    (!composerText.trim() ? t(locale, "Composer.EnterMessageToSend") : undefined);
   const sendDisabled = !sending && (!composerText.trim() || Boolean(runtimeBlockedReason));
   const attachDisabled = Boolean(runtimeBlockedReason);
   const slashCommandMatch = parseSlashCommand(composerText);
@@ -104,101 +104,101 @@ export const Composer = React.memo(function Composer({
         </button>
       )}
       {controlsExpanded && (
-      <div style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
-        <div style={{ position: "relative" }}>
-          <button
-            onClick={() => toggleMenu("mode")}
-            style={{
-              ...btnGhost,
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              borderColor: "var(--accent)",
-              color: "var(--accent)",
-            }}
-          >
-            {t(locale, `Mode.${mode}`)} <ChevronDown size={12} />
-          </button>
-          <Menu open={openMenu === "mode"} width={260} direction="up">
-            {modeOptions.map((m) => (
-              <MenuItem
-                key={m.id}
-                active={m.id === mode}
-                title={t(locale, `Mode.${m.id}`)}
-                sub={t(locale, `Mode.${m.id}Description`)}
-                onClick={() => {
-                  setMode(m.id);
-                  setOpenMenu(null);
-                }}
-              />
-            ))}
-          </Menu>
-        </div>
-
-        {mode === "Build" && (
-          <label
-            style={{
-              ...btnGhost,
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "0 8px",
-              color: "var(--text-secondary)",
-            }}
-            title={t(locale, "Composer.PermissionProfileDescription")}
-          >
-            <Shield size={12} aria-hidden="true" />
-            <span style={{ fontSize: 11 }}>{t(locale, "Composer.PermissionProfile")}</span>
-            <select
-              aria-label={t(locale, "Composer.PermissionProfile")}
-              value={permission}
-              onChange={(event) => setPermission(event.target.value)}
+        <div style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => toggleMenu("mode")}
               style={{
-                minWidth: 132,
-                appearance: "auto",
-                background: "transparent",
-                border: "none",
-                color: "inherit",
-                fontSize: 12,
-                padding: "6px 0",
+                ...btnGhost,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                borderColor: "var(--accent)",
+                color: "var(--accent)",
               }}
             >
-              {permissionOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {permissionProfileLabel(locale, option.label)}
-                </option>
+              {t(locale, `Mode.${mode}`)} <ChevronDown size={12} />
+            </button>
+            <Menu open={openMenu === "mode"} width={260} direction="up">
+              {modeOptions.map((m) => (
+                <MenuItem
+                  key={m.id}
+                  active={m.id === mode}
+                  title={t(locale, `Mode.${m.id}`)}
+                  sub={t(locale, `Mode.${m.id}Description`)}
+                  onClick={() => {
+                    setMode(m.id);
+                    setOpenMenu(null);
+                  }}
+                />
               ))}
-            </select>
-          </label>
-        )}
+            </Menu>
+          </div>
 
-        <div style={{ position: "relative" }}>
+          {mode === "Build" && (
+            <label
+              style={{
+                ...btnGhost,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "0 8px",
+                color: "var(--text-secondary)",
+              }}
+              title={t(locale, "Composer.PermissionProfileDescription")}
+            >
+              <Shield size={12} aria-hidden="true" />
+              <span style={{ fontSize: 11 }}>{t(locale, "Composer.PermissionProfile")}</span>
+              <select
+                aria-label={t(locale, "Composer.PermissionProfile")}
+                value={permission}
+                onChange={(event) => setPermission(event.target.value)}
+                style={{
+                  minWidth: 132,
+                  appearance: "auto",
+                  background: "transparent",
+                  border: "none",
+                  color: "inherit",
+                  fontSize: 12,
+                  padding: "6px 0",
+                }}
+              >
+                {permissionOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {permissionProfileLabel(locale, option.label)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => toggleMenu("model")}
+              style={{ ...btnGhost, display: "flex", alignItems: "center", gap: 6 }}
+            >
+              {currentModel.id === "auto" ? <Sparkles size={12} /> : <Cpu size={12} />}{" "}
+              {currentModel.label} <ChevronDown size={12} />
+            </button>
+            <ModelPicker
+              open={openMenu === "model"}
+              locale={locale}
+              model={model}
+              modelGroups={modelGroups}
+              hasAuto={hasAuto}
+              selectModel={selectModel}
+            />
+          </div>
+
           <button
-            onClick={() => toggleMenu("model")}
-            style={{ ...btnGhost, display: "flex", alignItems: "center", gap: 6 }}
+            onClick={() => setControlsExpanded(false)}
+            aria-label={t(locale, "Navigation.Close")}
+            title={t(locale, "Navigation.Close")}
+            style={{ ...btnGhost, border: "none", padding: 2, color: "var(--text-muted)" }}
           >
-            {currentModel.id === "auto" ? <Sparkles size={12} /> : <Cpu size={12} />}{" "}
-            {currentModel.label} <ChevronDown size={12} />
+            <X size={12} />
           </button>
-          <ModelPicker
-            open={openMenu === "model"}
-            locale={locale}
-            model={model}
-            modelGroups={modelGroups}
-            hasAuto={hasAuto}
-            selectModel={selectModel}
-          />
         </div>
-
-        <button
-          onClick={() => setControlsExpanded(false)}
-          aria-label={t(locale, "Navigation.Close")}
-          title={t(locale, "Navigation.Close")}
-          style={{ ...btnGhost, border: "none", padding: 2, color: "var(--text-muted)" }}
-        >
-          <X size={12} />
-        </button>
-      </div>
       )}
 
       <div
@@ -230,7 +230,11 @@ export const Composer = React.memo(function Composer({
               lineHeight: 1.35,
             }}
           >
-            {commandPreview ? <Command size={14} aria-hidden="true" /> : <CircleAlert size={14} aria-hidden="true" />}
+            {commandPreview ? (
+              <Command size={14} aria-hidden="true" />
+            ) : (
+              <CircleAlert size={14} aria-hidden="true" />
+            )}
             <div style={{ minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600 }}>
                 <span>{t(locale, "Composer.CommandPreview")}</span>
@@ -387,7 +391,7 @@ export const Composer = React.memo(function Composer({
           marginTop: 6,
         }}
       >
-        {sendBlockedReason || runtimeState} · {t(locale, "Composer.KeyboardShortcuts")} {" "}
+        {sendBlockedReason || runtimeState} · {t(locale, "Composer.KeyboardShortcuts")}{" "}
         {failedRunId && bridge && (
           <>
             <button

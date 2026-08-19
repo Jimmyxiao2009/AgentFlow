@@ -66,14 +66,7 @@ export const MODEL_PRESETS: ModelPreset[] = [
     id: "openai-codex",
     name: "OpenAI (Codex)",
     endpoint: "https://api.openai.com/v1",
-    models: [
-      "gpt-5.2-codex",
-      "gpt-5.1-codex",
-      "gpt-5-codex",
-      "gpt-5.5",
-      "gpt-5.4",
-      "gpt-5.4-mini",
-    ],
+    models: ["gpt-5.2-codex", "gpt-5.1-codex", "gpt-5-codex", "gpt-5.5", "gpt-5.4", "gpt-5.4-mini"],
     modelMeta: {
       "gpt-5.2-codex": { label: "GPT-5.2-Codex" },
       "gpt-5.1-codex": { label: "GPT-5.1-Codex" },
