@@ -170,7 +170,6 @@ export class VercelAiAdapter implements AgentAdapter {
       abortSignal: signal,
       temperature: 0.2,
     });
-    const changedPaths: string[] = [];
     let sequence = 0;
     try {
       for await (const delta of result.textStream) {

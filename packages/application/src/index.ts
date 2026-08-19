@@ -416,6 +416,7 @@ export class AgentFlowApplication {
         conversationId: string;
         text: string;
         mode: "Ask" | "Investigate" | "Plan" | "Implement" | "Fix" | "Review";
+        intent?: "build";
         adapterId: string;
         profileId: string;
         modelId?: string;
@@ -2296,6 +2297,7 @@ export class AgentFlowApplication {
       conversationId: run.conversationId,
       text: this.augmentPrompt(changeRequest.projectId, input.prompt ?? task.contract.objective),
       mode: "Implement",
+      intent: "build",
       adapterId,
       profileId: profile.id,
       modelId,
@@ -2342,6 +2344,7 @@ export class AgentFlowApplication {
         {
           prompt: input.prompt ?? task.contract.objective,
           mode: "Implement",
+          intent: "build",
           modelId,
           providerModelId,
           permissionProfile,
@@ -2462,9 +2465,10 @@ export class AgentFlowApplication {
           signal,
         );
         results.push(result);
-      } catch (error: unknown) {
+      } catch {
         // A single task failure must not abort other concurrent tasks.
-        // Record the failure and continue processing the queue.
+        // runTask() already records the failure via recordTaskFailure()
+        // before rethrowing; here we just keep the queue moving.
         if (signal.aborted) throw signal.reason ?? new Error("Operation aborted");
       }
     };
@@ -3121,6 +3125,7 @@ export class AgentFlowApplication {
         conversationId: request.conversationId,
         text: request.text,
         mode: request.mode,
+        intent: request.intent,
         adapterId: request.adapterId,
         profileId: request.profileId,
         modelId: request.modelId,
