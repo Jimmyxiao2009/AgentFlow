@@ -2597,6 +2597,22 @@ export class AgentFlowApplication {
       this.store.saveProjection(`cr:${changeRequest.id}`, 1, changeRequest);
     }
     const npm = process.platform === "win32" ? "npm.cmd" : "npm";
+    // Read the workspace's package.json scripts once so we can skip npm
+    // validation commands that the project does not actually define. The
+    // planner emits a fixed set of npm scripts (format:check, lint, etc.);
+    // on a non-npm project those commands would all fail and block every
+    // task. Skipping undefined scripts keeps validation meaningful instead
+    // of producing a wall of spurious blocking failures.
+    let packageScripts: Set<string> | undefined;
+    try {
+      const raw = await readFile(path.join(workspace.path, "package.json"), "utf8");
+      const parsed = JSON.parse(raw) as { scripts?: Record<string, unknown> };
+      packageScripts = new Set(Object.keys(parsed.scripts ?? {}));
+    } catch {
+      // No package.json (or unreadable): don't filter — let npm fail naturally
+      // so the user sees the project isn't an npm project.
+      packageScripts = undefined;
+    }
     const checks = task.contract.requiredValidationCommands
       .map((command): {
         name: string;
@@ -2614,7 +2630,10 @@ export class AgentFlowApplication {
             command,
             blocking: this.settings.blockOnFailingValidation,
           };
-        if (runScript)
+        if (runScript) {
+          // Skip npm scripts the project does not define (non-npm or partial
+          // toolchains) so validation isn't blocked by a missing script.
+          if (packageScripts && !packageScripts.has(runScript)) return undefined;
           return {
             name: runScript.replaceAll(":", "-"),
             executable: npm,
@@ -2622,6 +2641,7 @@ export class AgentFlowApplication {
             command,
             blocking: this.settings.blockOnFailingValidation || runScript === "security:scan",
           };
+        }
         // Support non-npm commands (e.g. cargo test, make test, go test, pnpm test)
         const parts = command.split(/\s+/).filter(Boolean);
         if (parts.length === 0) return undefined;
