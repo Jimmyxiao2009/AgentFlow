@@ -33,6 +33,7 @@ import {
   runtimeSettingsToUi,
   resolveUiLocale,
   uiSettingsToRuntime,
+  localizedStatus,
 } from "./utils";
 import {
   PlanApprovalCard,
@@ -997,7 +998,7 @@ export default function AgentFlowWorkspace() {
                 activeRuns.length === 1 ? "Status.AgentRunningOne" : "Status.AgentsRunningMany",
                 { count: activeRuns.length },
               )
-            : changeRequest?.state || latestRun?.state || "Idle";
+            : localizedStatus(locale, changeRequest?.state || latestRun?.state || "Idle");
           const statusTone = activeRuns.length
             ? "accent"
             : ["Failed", "Cancelled"].includes(latestRun?.state)
@@ -1276,7 +1277,9 @@ export default function AgentFlowWorkspace() {
     )
     .at(-1)?.payload;
   const workflowPhase =
-    currentChangeRequest?.state || t(locale, "Inspector.NoActiveChangeRequest");
+    currentChangeRequest?.state
+      ? localizedStatus(locale, currentChangeRequest.state)
+      : t(locale, "Inspector.NoActiveChangeRequest");
   const completedTaskCount = displayTasks.filter((task) =>
     ["Completed", "Approved", "Integrated"].includes(task.status),
   ).length;

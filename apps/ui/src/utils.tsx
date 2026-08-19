@@ -488,6 +488,38 @@ export function localizedStatus(locale: Locale, state: string) {
     Available: "Status.Available",
     "Requires login": "Status.RequiresLogin",
     "Not installed": "Status.NotInstalled",
+    // ChangeRequestState
+    Draft: "Status.Draft",
+    Planning: "Status.Planning",
+    AwaitingSpecApproval: "Status.AwaitingSpecApproval",
+    Running: "Status.Running",
+    Validating: "Status.Validating",
+    Reviewing: "Status.Reviewing",
+    IntegrationReady: "Status.IntegrationReady",
+    Completed: "Status.Completed",
+    Rejected: "Status.Rejected",
+    Cancelled: "Status.Cancelled",
+    Failed: "Status.Failed",
+    // TaskState (adds to the above)
+    Pending: "Status.Pending",
+    Blocked: "Status.Blocked",
+    Leased: "Status.Leased",
+    PatchProduced: "Status.PatchProduced",
+    ValidationFailed: "Status.ValidationFailed",
+    ReviewRequested: "Status.ReviewRequested",
+    ChangesRequested: "Status.ChangesRequested",
+    Approved: "Status.Approved",
+    Integrated: "Status.Integrated",
+    // AgentRun state (adds to the above)
+    Queued: "Status.Queued",
+    WaitingApproval: "Status.WaitingApproval",
+    // ValidationRun status (adds to the above)
+    Passed: "Status.Passed",
+    Skipped: "Status.Skipped",
+    // ReviewVerdict spells "changes requested" differently than TaskState's
+    // ChangesRequested, but it's the same concept -- same key.
+    "Changes requested": "Status.ChangesRequested",
+    Idle: "Status.Idle",
   };
   return t(locale, keys[state] || state);
 }

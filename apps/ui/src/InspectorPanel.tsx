@@ -13,7 +13,7 @@ import { t } from "@agentflow/localization";
 import type { InspectorPanelProps } from "./types";
 import { btnGhost, btnPrimary } from "./constants";
 import { Dot, Badge } from "./ui-primitives";
-import { permissionProfileLabel, diffFileState } from "./utils";
+import { permissionProfileLabel, diffFileState, localizedStatus } from "./utils";
 import { DiffViewer } from "./DiffViewer";
 
 export const InspectorPanel = React.memo(function InspectorPanel({
@@ -420,7 +420,7 @@ export const InspectorPanel = React.memo(function InspectorPanel({
                       : t(locale, "Inspector.NoDependencies")}
                     {task.assignedAgent ? ` · ${task.assignedAgent}` : ""}
                     {task.validation
-                      ? ` · ${t(locale, "Inspector.ValidationStatus", { status: task.validation })}`
+                      ? ` · ${t(locale, "Inspector.ValidationStatus", { status: localizedStatus(locale, task.validation) })}`
                       : ""}
                   </div>
                   {(task.worktree || task.review) && (
@@ -429,7 +429,9 @@ export const InspectorPanel = React.memo(function InspectorPanel({
                       style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}
                     >
                       {task.worktree || ""}
-                      {task.review ? `${task.worktree ? " · " : ""}review ${task.review}` : ""}
+                      {task.review
+                        ? `${task.worktree ? " · " : ""}${t(locale, "Inspector.ReviewStatus", { verdict: localizedStatus(locale, task.review) })}`
+                        : ""}
                     </div>
                   )}
                 </div>
