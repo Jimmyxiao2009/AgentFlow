@@ -1,4 +1,19 @@
 import React from "react";
+import { t, supportedLocales, type Locale } from "@agentflow/localization";
+import { detectSystemLocale } from "./utils";
+
+// The boundary wraps the whole workspace (see main.tsx) specifically so it can
+// catch crashes anywhere inside it, which means it can't read locale from
+// AgentFlowWorkspace's own state -- that's exactly what may have crashed.
+// AgentFlowWorkspace keeps document.documentElement.lang in sync with the
+// active locale on every render, so that's the most reliable signal left
+// once we're rendering the fallback instead of the app that used to own it.
+function currentLocale(): Locale {
+  const lang = globalThis.document?.documentElement.lang;
+  return (supportedLocales as string[]).includes(lang ?? "")
+    ? (lang as Locale)
+    : detectSystemLocale();
+}
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -31,6 +46,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   override render(): React.ReactNode {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;
+      const locale = currentLocale();
       return (
         <div
           style={{
@@ -46,7 +62,9 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
             fontFamily: "system-ui, sans-serif",
           }}
         >
-          <div style={{ fontSize: 18, fontWeight: 600 }}>Something went wrong</div>
+          <div style={{ fontSize: 18, fontWeight: 600 }}>
+            {t(locale, "Error.SomethingWentWrong")}
+          </div>
           <div
             style={{
               fontSize: 13,
@@ -57,7 +75,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
               overflowWrap: "anywhere",
             }}
           >
-            {this.state.error?.message || "An unexpected error occurred while rendering the workspace."}
+            {this.state.error?.message || t(locale, "Error.UnexpectedRenderError")}
           </div>
           <button
             onClick={this.handleReset}
@@ -72,7 +90,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
               cursor: "pointer",
             }}
           >
-            Reload workspace
+            {t(locale, "Error.ReloadWorkspace")}
           </button>
         </div>
       );

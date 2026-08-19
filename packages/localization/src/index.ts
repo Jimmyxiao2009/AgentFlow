@@ -497,6 +497,9 @@ const english: Record<string, string> = {
   "Model.Text": "Text",
   "Model.Vision": "Vision",
   "Model.Providers": "Providers",
+  "Error.SomethingWentWrong": "Something went wrong",
+  "Error.UnexpectedRenderError": "An unexpected error occurred while rendering the workspace.",
+  "Error.ReloadWorkspace": "Reload workspace",
 };
 
 const overrides: Record<Locale, Record<string, string>> = {
@@ -988,6 +991,9 @@ const overrides: Record<Locale, Record<string, string>> = {
     "Action.Retry": "重试",
     "Action.Resume": "继续",
     "Model.ManualUnverified": "手动 · 未验证",
+    "Error.SomethingWentWrong": "出现问题",
+    "Error.UnexpectedRenderError": "渲染工作区时发生意外错误。",
+    "Error.ReloadWorkspace": "重新加载工作区",
   },
   "zh-TW": {
     "Composer.EnterMessageToSend": "請先輸入訊息再傳送。",
@@ -1474,6 +1480,9 @@ const overrides: Record<Locale, Record<string, string>> = {
     "Model.CliDefault": "CLI 預設",
     "Model.Verified": "已驗證",
     "Model.ManualUnverified": "手動 · 未驗證",
+    "Error.SomethingWentWrong": "發生錯誤",
+    "Error.UnexpectedRenderError": "渲染工作區時發生意外錯誤。",
+    "Error.ReloadWorkspace": "重新載入工作區",
   },
   "ja-JP": {
     "Composer.EnterMessageToSend": "送信する前にメッセージを入力してください。",
@@ -1960,6 +1969,9 @@ const overrides: Record<Locale, Record<string, string>> = {
     "Model.CliDefault": "CLI デフォルト",
     "Model.Verified": "検証済み",
     "Model.ManualUnverified": "手動・未検証",
+    "Error.SomethingWentWrong": "問題が発生しました",
+    "Error.UnexpectedRenderError": "ワークスペースのレンダリング中に予期しないエラーが発生しました。",
+    "Error.ReloadWorkspace": "ワークスペースを再読み込み",
   },
   "ko-KR": {
     "Composer.EnterMessageToSend": "보내기 전에 메시지를 입력하세요.",
@@ -2446,6 +2458,9 @@ const overrides: Record<Locale, Record<string, string>> = {
     "Model.CliDefault": "CLI 기본값",
     "Model.Verified": "검증됨",
     "Model.ManualUnverified": "수동 · 미검증",
+    "Error.SomethingWentWrong": "문제가 발생했습니다",
+    "Error.UnexpectedRenderError": "작업 공간을 렌더링하는 동안 예기치 않은 오류가 발생했습니다.",
+    "Error.ReloadWorkspace": "작업 공간 다시 불러오기",
   },
 };
 
