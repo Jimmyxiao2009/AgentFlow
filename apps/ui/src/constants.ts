@@ -12,6 +12,9 @@ import {
   Accessibility,
   Wrench,
   Info,
+  Users,
+  KeyRound,
+  Route,
 } from "lucide-react";
 import { agentFlowAccentColors } from "@agentflow/design-system";
 
@@ -65,8 +68,11 @@ export const settingsSections = [
   { id: "general", key: "Settings.General", icon: Settings },
   { id: "appearance", key: "Settings.Appearance", icon: Palette },
   { id: "language", key: "Settings.Language", icon: Globe },
+  { id: "agents", key: "Settings.Agents", icon: Users },
   { id: "models", key: "Settings.Models", icon: Cpu },
+  { id: "auth", key: "Settings.Auth", icon: KeyRound },
   { id: "workflows", key: "Settings.Workflows", icon: Workflow },
+  { id: "routing", key: "Settings.Routing", icon: Route },
   { id: "permissions", key: "Settings.Permissions", icon: Shield },
   { id: "git", key: "Settings.Git", icon: GitBranch },
   { id: "safety", key: "Settings.Safety", icon: Lock },

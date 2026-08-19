@@ -176,6 +176,11 @@ export default function AgentFlowWorkspace() {
   const settingsRef = useRef(null);
   const bridgeRef = useRef<BridgeApi | null>(null);
   const blockedTaskIdsRef = useRef(null);
+  // Keeps the latest newConversation closure for the global keyboard handler.
+  // The keydown effect only rebinds on [commandPaletteOpen, sending]; without
+  // this ref, Ctrl+N captured the first render's newConversation and used a
+  // stale activeProject/mode long after the user switched projects.
+  const newConversationRef = useRef<() => void>(() => {});
   const runtimeStateKeyRef = useRef<{
     key: string;
     parameters?: Record<string, string | number>;
@@ -522,7 +527,7 @@ export default function AgentFlowWorkspace() {
       }
       if (modifier && event.key.toLowerCase() === "n") {
         event.preventDefault();
-        void newConversation();
+        void newConversationRef.current();
       }
       if (modifier && event.key.toLowerCase() === "l") {
         event.preventDefault();
@@ -901,6 +906,9 @@ export default function AgentFlowWorkspace() {
       }
     } else setLocalizedRuntimeState("Runtime.OpenRepositoryBeforeNewConversation");
   };
+  // Refresh the ref each render so the global shortcut always calls the latest
+  // closure (current activeProject/mode) without re-binding the keydown listener.
+  newConversationRef.current = newConversation;
 
   const resolvePermission = async (decision) => {
     const activeRequest =
