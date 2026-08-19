@@ -8,6 +8,7 @@ use std::os::unix::process::CommandExt;
 use std::path::PathBuf;
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::{mpsc, Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager, State, Window};
 use tauri_plugin_dialog::{DialogExt, FilePath};
@@ -22,6 +23,11 @@ struct Sidecar {
     child: Option<Child>,
     stdin: Option<ChildStdin>,
     responses: Arc<Mutex<HashMap<String, PendingResponse>>>,
+    /// Tracks whether the stdout reader thread is alive. The reader sets this
+    /// false on exit (read error / EOF). If it dies while the child is still
+    /// alive, ensure_sidecar kills and restarts the child so a fresh reader is
+    /// spawned — otherwise every bridge_request would time out forever.
+    reader_alive: Arc<AtomicBool>,
 }
 
 struct SidecarState(Mutex<Sidecar>);
@@ -349,11 +355,26 @@ fn pick_context_files(
         })
 }
 
+/// RAII guard that flips the reader-alive flag to false when the reader
+/// thread exits (whether by return, panic, or early `?`). Ensures the flag is
+/// always updated on every exit path.
+struct ReaderAliveGuard(Arc<AtomicBool>);
+impl Drop for ReaderAliveGuard {
+    fn drop(&mut self) {
+        self.0.store(false, Ordering::SeqCst);
+    }
+}
+
 fn read_sidecar_output(
     stdout: BufReader<ChildStdout>,
     app: AppHandle,
     responses: Arc<Mutex<HashMap<String, PendingResponse>>>,
+    reader_alive: Arc<AtomicBool>,
 ) {
+    // Mark the reader dead on any exit path so ensure_sidecar can restart the
+    // sidecar (and spawn a fresh reader) if this thread ends while the child
+    // is still alive.
+    let _guard = ReaderAliveGuard(reader_alive);
     let mut stdout = stdout;
     let mut line = String::new();
     let failure = |message: String, responses: &Arc<Mutex<HashMap<String, PendingResponse>>>| {
@@ -445,6 +466,16 @@ fn ensure_sidecar(state: &mut Sidecar, app: &AppHandle) -> Result<(), String> {
         state.child = None;
         state.stdin = None;
     }
+    // If the child is still alive but its reader thread has died (read error /
+    // EOF without the child exiting), the app is in a degraded state where
+    // every bridge_request times out. Kill the child so the restart path below
+    // spawns a fresh sidecar + reader. Without this the app never recovers
+    // until manually restarted.
+    if state.child.is_some() && !state.reader_alive.load(Ordering::SeqCst) {
+        let _ = state.child.as_mut().map(|child| child.kill());
+        state.child = None;
+        state.stdin = None;
+    }
     if state.child.is_some() {
         return Ok(());
     }
@@ -512,9 +543,14 @@ fn ensure_sidecar(state: &mut Sidecar, app: &AppHandle) -> Result<(), String> {
         .ok_or_else(|| "AgentFlow runtime stdout unavailable".to_string())?;
     let responses = Arc::clone(&state.responses);
     let reader_app = app.clone();
+    // A fresh reader is alive until it exits; reset the flag so the previous
+    // reader's death (which triggered this restart) doesn't immediately
+    // re-kill the new child on the next ensure_sidecar call.
+    let reader_alive = Arc::new(AtomicBool::new(true));
+    state.reader_alive = Arc::clone(&reader_alive);
     std::thread::Builder::new()
         .name("agentflow-sidecar-reader".to_string())
-        .spawn(move || read_sidecar_output(stdout, reader_app, responses))
+        .spawn(move || read_sidecar_output(stdout, reader_app, responses, reader_alive))
         .map_err(|error| format!("Unable to start sidecar reader: {error}"))?;
     state.child = Some(child);
     Ok(())
@@ -620,6 +656,7 @@ pub fn run() {
             child: None,
             stdin: None,
             responses: Arc::new(Mutex::new(HashMap::new())),
+            reader_alive: Arc::new(AtomicBool::new(false)),
         })))
         .invoke_handler(tauri::generate_handler![
             bridge_request,
