@@ -105,6 +105,13 @@ export class TaskDagScheduler {
         if (task && task.state === "Leased") {
           task.state = transitionTask(task.state, "Ready");
           task.lease = undefined;
+        } else if (task && task.state === "Running") {
+          // A Running task whose lease expired is a zombie run (the worker
+          // crashed without completing). Running -> Ready is not a valid
+          // transition, so move it to Failed (valid) so it can be requeued,
+          // rather than leaving it stuck Running with no live run.
+          task.state = transitionTask(task.state, "Failed");
+          task.lease = undefined;
         }
         this.leases.delete(taskId);
         released.push(taskId);

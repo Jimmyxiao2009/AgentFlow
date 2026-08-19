@@ -13,7 +13,7 @@ import type {
   ProbeContext,
 } from "@agentflow/adapter-sdk";
 import { throwIfAborted } from "@agentflow/adapter-sdk";
-import type { AuthenticationProfile } from "@agentflow/domain";
+import type { AuthenticationProfile, PermissionProfileName } from "@agentflow/domain";
 import type { AdapterEvent } from "@agentflow/protocol";
 
 export interface AiProviderConfig {
@@ -160,7 +160,10 @@ export class VercelAiAdapter implements AgentAdapter {
       baseURL: this.baseUrl(provider.endpoint),
       apiKey: provider.apiKey,
     });
-    const build = request.intent === "build" ? this.buildTools(session) : undefined;
+    const build =
+      request.intent === "build"
+        ? this.buildTools(session, request.permissionProfile)
+        : undefined;
     const result = streamText({
       model: sdkProvider.chatModel(model),
       system: this.systemPrompt(request.mode, session.role, request.intent === "build"),
@@ -261,7 +264,10 @@ export class VercelAiAdapter implements AgentAdapter {
     return base.endsWith("/v1") ? base : `${base}/v1`;
   }
 
-  private buildTools(session: AgentSessionHandle) {
+  private buildTools(
+    session: AgentSessionHandle,
+    permissionProfile?: PermissionProfileName,
+  ) {
     const workspacePath = session.workspacePath;
     if (!workspacePath) throw new Error("Build mode requires a repository workspace");
     const root = path.resolve(workspacePath);
@@ -277,6 +283,29 @@ export class VercelAiAdapter implements AgentAdapter {
       return resolved;
     };
     const changedPaths: string[] = [];
+    // Only attach the write_file tool when the selected permission profile
+    // actually permits writes. The application layer gates build intent behind
+    // a write-capable profile, but the adapter must not trust that blindly — a
+    // Read-Only (or read-only Custom) build request must not be handed a file
+    // writer even if the caller mis-routes it.
+    const canWrite =
+      permissionProfile === "Workspace Write" ||
+      permissionProfile === "Elevated with Approval" ||
+      permissionProfile === "Custom";
+    const write_file = tool({
+      description: "Create or replace one UTF-8 text file inside the current repository. Use only for the requested small fix.",
+      inputSchema: z.object({
+        path: z.string().min(1).max(500),
+        content: z.string().max(500_000),
+      }),
+      execute: async ({ path: filePath, content }) => {
+        const resolved = resolvePath(filePath);
+        await mkdir(path.dirname(resolved), { recursive: true });
+        await writeFile(resolved, content, "utf8");
+        changedPaths.push(filePath);
+        return { path: filePath, written: true };
+      },
+    });
     return {
       tools: {
         read_file: tool({
@@ -287,20 +316,7 @@ export class VercelAiAdapter implements AgentAdapter {
             content: (await readFile(resolvePath(filePath), "utf8")).slice(0, 120_000),
           }),
         }),
-        write_file: tool({
-          description: "Create or replace one UTF-8 text file inside the current repository. Use only for the requested small fix.",
-          inputSchema: z.object({
-            path: z.string().min(1).max(500),
-            content: z.string().max(500_000),
-          }),
-          execute: async ({ path: filePath, content }) => {
-            const resolved = resolvePath(filePath);
-            await mkdir(path.dirname(resolved), { recursive: true });
-            await writeFile(resolved, content, "utf8");
-            changedPaths.push(filePath);
-            return { path: filePath, written: true };
-          },
-        }),
+        ...(canWrite ? { write_file } : {}),
       },
       stopWhen: stepCountIs(8),
       changedPaths,

@@ -8,7 +8,6 @@ use std::os::unix::process::CommandExt;
 use std::path::PathBuf;
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::{mpsc, Arc, Mutex};
-#[cfg(unix)]
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager, State, Window};
 use tauri_plugin_dialog::{DialogExt, FilePath};
@@ -387,9 +386,15 @@ fn read_sidecar_output(
         }
         let message: Value = match serde_json::from_str(line.trim()) {
             Ok(message) => message,
-            Err(error) => {
-                failure(format!("Invalid sidecar response: {error}"), &responses);
-                return;
+            Err(_) => {
+                // A single malformed line must not terminate the reader for the
+                // whole session. The sidecar emits one JSON value per line; a
+                // stray partial line, a non-JSON debug string, or a transient
+                // parse hiccup should be skipped, not fatal. Previously this
+                // returned, killing the reader while the child stayed alive,
+                // so every subsequent bridge_request hung forever (recv() with
+                // no timeout) and froze the UI.
+                continue;
             }
         };
         if message.get("kind").and_then(Value::as_str) == Some("event") {
@@ -567,10 +572,18 @@ async fn bridge_request(
     // dispatched there) and freeze the entire window's message pump for as
     // long as the agent takes to respond. Move the wait onto a blocking-pool
     // thread and await it instead, so the UI stays responsive.
-    tauri::async_runtime::spawn_blocking(move || receiver.recv())
+    //
+    // Use a bounded recv_timeout rather than an unbounded recv: if the reader
+    // thread has died (or a response is lost) the sender never fires, and a
+    // plain recv() would block this command forever, permanently freezing the
+    // UI on that request. A 60s ceiling returns an error the renderer can
+    // surface instead of hanging; long-running streaming work is delivered as
+    // events, not as a single blocking response, so 60s only bounds the
+    // request/acknowledgment round-trip.
+    tauri::async_runtime::spawn_blocking(move || receiver.recv_timeout(Duration::from_secs(60)))
         .await
         .map_err(|error| format!("Bridge request task failed: {error}"))?
-        .map_err(|_| "Sidecar exited without a response".to_string())?
+        .map_err(|error| format!("Bridge request timed out or the sidecar did not respond: {error}"))?
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
