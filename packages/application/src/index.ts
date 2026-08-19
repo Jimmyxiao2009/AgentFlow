@@ -3096,6 +3096,17 @@ export class AgentFlowApplication {
       }
     }
     if (integrationWorkspace) {
+      // Reusing an existing integration worktree (e.g. retrying after a prior
+      // conflict): reset it hard back to the base commit before cherry-picking.
+      // A prior failed attempt may have left successfully cherry-picked commits
+      // on the branch (cherry-pick --abort only undoes the failing pick), so
+      // without this reset a retry would re-apply those commits and either
+      // duplicate them or spuriously conflict. Resetting to base makes every
+      // integration attempt start clean, as the docs require ("retry without
+      // recreating the branch").
+      const baseCommit = changeRequest.baseCommit ?? repository.head;
+      await git(integrationWorkspace.path, ["reset", "--hard", baseCommit]);
+      integrationWorkspace.baseCommit = baseCommit;
       integrationWorkspace.status = "Ready";
       this.store.saveProjection(`workspace:${integrationWorkspace.id}`, 1, integrationWorkspace);
     } else {

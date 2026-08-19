@@ -176,6 +176,56 @@ describe("isolated worker vertical slice", () => {
     }
   });
 
+  it("treats an already-applied (empty) cherry-pick as completed, not a conflict", async () => {
+    const root = mkdtempSync(join(tmpdir(), "agentflow-integration-empty-"));
+    const repository = join(root, "repo");
+    const integrationPath = join(root, "integration");
+    mkdirSync(repository, { recursive: true });
+    writeFileSync(join(repository, "file.txt"), "base\n");
+    const gitRun = (cwd: string, args: string[]) =>
+      execFileSync("git", args, { cwd, stdio: "ignore" });
+    gitRun(repository, ["init", "-q"]);
+    gitRun(repository, ["config", "user.name", "AgentFlow Fixture"]);
+    gitRun(repository, ["config", "user.email", "fixture@example.invalid"]);
+    gitRun(repository, ["add", "."]);
+    gitRun(repository, ["commit", "-qm", "base"]);
+    const base = (await git(repository, ["rev-parse", "HEAD"])).stdout.trim();
+    // A patch commit that changes file.txt, then cherry-pick it onto the
+    // integration branch FIRST so a second application is an empty pick.
+    gitRun(repository, ["checkout", "-q", "-b", "fixture-patch"]);
+    writeFileSync(join(repository, "file.txt"), "patch\n");
+    gitRun(repository, ["commit", "-qam", "patch"]);
+    const patchCommit = (await git(repository, ["rev-parse", "HEAD"])).stdout.trim();
+    gitRun(repository, ["checkout", "-q", "--detach", base]);
+    gitRun(repository, ["worktree", "add", "-q", "-b", "fixture-integration", integrationPath, base]);
+    // Apply the patch once so it is already present.
+    gitRun(integrationPath, ["cherry-pick", patchCommit]);
+    const service = new IntegrationService();
+    const patchSet = createImmutablePatchSet({
+      id: "patch-empty",
+      taskId: "task-empty",
+      sequence: 1,
+      baseCommit: base,
+      resultCommit: patchCommit,
+      changedFiles: ["file.txt"],
+      diffArtifactId: "artifact-empty",
+      validationRunIds: [],
+      producingRunId: "run-empty",
+      createdAt: new Date().toISOString(),
+      reviewState: "Approved",
+    });
+    try {
+      // Re-applying the same patch is an empty cherry-pick; it must not be
+      // misclassified as a Conflict.
+      const result = await service.applyApprovedPatchSets(integrationPath, [patchSet]);
+      expect(result.status).toBe("Completed");
+      expect(result.commit).toMatch(/^[0-9a-f]{40}$/);
+    } finally {
+      gitRun(repository, ["worktree", "remove", "--force", integrationPath]);
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("blocks a forbidden path even when it is nested under an allowed directory", async () => {
     const root = mkdtempSync(join(tmpdir(), "agentflow-forbidden-nested-"));
     const repository = join(root, "repo");

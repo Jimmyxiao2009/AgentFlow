@@ -310,18 +310,29 @@ export class IntegrationService {
         };
       const result = await git(integrationWorkspacePath, ["cherry-pick", patchSet.resultCommit]);
       if (result.exitCode !== 0) {
+        // A cherry-pick can fail because of a real merge conflict OR because
+        // the change is already present (empty pick). Distinguish them: an
+        // empty pick has no unmerged paths, so treat it as already-applied and
+        // skip it; only a real conflict with unmerged files aborts integration.
         const conflicts = await git(integrationWorkspacePath, [
           "diff",
           "--name-only",
           "--diff-filter=U",
         ]);
+        const conflictingFiles = conflicts.stdout
+          .split(/\r?\n/)
+          .map((file) => file.trim())
+          .filter(Boolean);
+        if (conflictingFiles.length === 0) {
+          // Empty cherry-pick: the PatchSet's changes are already on the
+          // integration branch. Abort the in-progress empty pick and continue.
+          await git(integrationWorkspacePath, ["cherry-pick", "--abort"]);
+          continue;
+        }
         await git(integrationWorkspacePath, ["cherry-pick", "--abort"]);
         return {
           status: "Conflict",
-          conflictingFiles: conflicts.stdout
-            .split(/\r?\n/)
-            .map((file) => file.trim())
-            .filter(Boolean),
+          conflictingFiles,
           message: result.stderr.slice(0, 2_000),
         };
       }
