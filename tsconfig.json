@@ -1,0 +1,23 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/domain" },
+    { "path": "./packages/protocol" },
+    { "path": "./packages/adapter-sdk" },
+    { "path": "./packages/adapter-fake" },
+    { "path": "./packages/adapter-vercel-ai" },
+    { "path": "./packages/process-supervisor" },
+    { "path": "./packages/permission-engine" },
+    { "path": "./packages/routing-engine" },
+    { "path": "./packages/git" },
+    { "path": "./packages/persistence" },
+    { "path": "./packages/workflow-engine" },
+    { "path": "./packages/agent-runtime" },
+    { "path": "./packages/application" },
+    { "path": "./packages/desktop-bridge" },
+    { "path": "./packages/design-system" },
+    { "path": "./packages/localization" },
+    { "path": "./packages/config" },
+    { "path": "./apps/runtime" }
+  ]
+}

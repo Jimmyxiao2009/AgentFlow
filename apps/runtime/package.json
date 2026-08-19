@@ -1,0 +1,18 @@
+{
+  "name": "@agentflow/runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@agentflow/adapter-vercel-ai": "0.1.0",
+    "@agentflow/application": "0.1.0",
+    "@agentflow/protocol": "0.1.0"
+  },
+  "devDependencies": {
+    "@agentflow/adapter-fake": "0.1.0"
+  },
+  "scripts": {
+    "dev": "tsx src/main.ts",
+    "build": "tsc -p tsconfig.json"
+  }
+}

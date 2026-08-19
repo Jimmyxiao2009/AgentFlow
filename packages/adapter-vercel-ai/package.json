@@ -1,0 +1,25 @@
+{
+  "name": "@agentflow/adapter-vercel-ai",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@agentflow/adapter-sdk": "0.1.0",
+    "@agentflow/domain": "0.1.0",
+    "@agentflow/protocol": "0.1.0",
+    "@ai-sdk/openai-compatible": "^1.0.0",
+    "ai": "^5.0.238",
+    "zod": "^3.25.76"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  }
+}

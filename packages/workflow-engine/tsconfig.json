@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "outDir": "dist", "rootDir": "src", "composite": true },
+  "references": [
+    { "path": "../domain" },
+    { "path": "../adapter-sdk" },
+    { "path": "../adapter-fake" },
+    { "path": "../git" },
+    { "path": "../permission-engine" },
+    { "path": "../process-supervisor" }
+  ],
+  "include": ["src"]
+}

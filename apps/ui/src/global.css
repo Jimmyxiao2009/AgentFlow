@@ -1,0 +1,310 @@
+html,
+body,
+#root {
+  margin: 0;
+  min-width: 960px;
+  height: 100%;
+  overflow: hidden;
+}
+
+.af {
+  --window: #0d0f12;
+  --sidebar: #111419;
+  --conversation: #13171c;
+  --inspector: #101318;
+  --elevated: #181d24;
+  --hover: #1d232c;
+  --selected: #202936;
+  --text-primary: #e7eaf0;
+  --text-secondary: #a7afbc;
+  --text-muted: #727b89;
+  --border-subtle: #252c36;
+  --border-strong: #343d49;
+  --accent: #5da9ff;
+  --accent-dim: #5da9ff33;
+  --success: #4cc38a;
+  --success-dim: #4cc38a26;
+  --warning: #e5b454;
+  --warning-dim: #e5b45426;
+  --danger: #ef6b73;
+  --danger-dim: #ef6b7326;
+  --on-accent: #0b1220;
+  --control-knob: #ffffff;
+  --overlay-scrim: #00000066;
+  --shadow-color: #00000044;
+  font-family: -apple-system, "Segoe UI", Inter, sans-serif;
+  background: var(--window);
+  color: var(--text-primary);
+  position: relative;
+}
+
+.af-light {
+  --window: #f5f7fa;
+  --sidebar: #edf1f5;
+  --conversation: #ffffff;
+  --inspector: #f7f9fb;
+  --elevated: #ffffff;
+  --hover: #e8eef5;
+  --selected: #ddebfa;
+  --text-primary: #18212b;
+  --text-secondary: #4d5b6a;
+  --text-muted: #718091;
+  --border-subtle: #d6dee8;
+  --border-strong: #aebaca;
+  --on-accent: #ffffff;
+  --overlay-scrim: #00000033;
+  --shadow-color: #00000022;
+}
+
+.af-system {
+  --window: #0d0f12;
+  --sidebar: #111419;
+  --conversation: #13171c;
+  --inspector: #101318;
+  --elevated: #181d24;
+  --hover: #1d232c;
+  --selected: #202936;
+  --text-primary: #e7eaf0;
+  --text-secondary: #a7afbc;
+  --text-muted: #727b89;
+  --border-subtle: #252c36;
+  --border-strong: #343d49;
+}
+
+@media (prefers-color-scheme: light) {
+  .af-system {
+    --window: #f5f7fa;
+    --sidebar: #edf1f5;
+    --conversation: #ffffff;
+    --inspector: #f7f9fb;
+    --elevated: #ffffff;
+    --hover: #e8eef5;
+    --selected: #ddebfa;
+    --text-primary: #18212b;
+    --text-secondary: #4d5b6a;
+    --text-muted: #718091;
+    --border-subtle: #d6dee8;
+    --border-strong: #aebaca;
+    --on-accent: #ffffff;
+    --overlay-scrim: #00000033;
+    --shadow-color: #00000022;
+  }
+}
+
+.af-mono {
+  font-family: "SF Mono", "JetBrains Mono", Menlo, monospace;
+}
+.af-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.af-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 8px;
+}
+.af-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.af-fade-in {
+  animation: afFadeIn 220ms ease;
+}
+@keyframes afFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.af-pulse {
+  animation: afPulse 1.6s ease-in-out infinite;
+}
+
+.af-settings-content-inner {
+  width: min(100%, 1120px);
+}
+
+@media (max-width: 860px) {
+  .af-models-page {
+    flex-direction: column;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  .af-models-sidebar {
+    width: auto !important;
+    max-height: 260px;
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .af-models-main {
+    overflow: visible !important;
+    padding: 22px 16px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .af-settings-content {
+    padding: 20px 16px !important;
+  }
+
+  .af-settings-content-inner {
+    width: 100%;
+  }
+
+  .af-settings-content-inner > div:first-child {
+    margin-bottom: 14px !important;
+  }
+}
+
+@keyframes afPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+.af-spin {
+  animation: afSpin 1s linear infinite;
+}
+@keyframes afSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.af-menu-item:hover,
+.af-nav-item:hover {
+  background: var(--hover);
+}
+.af-row:last-child {
+  border-bottom: none !important;
+}
+.af button:focus-visible,
+.af textarea:focus-visible,
+.af input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.af-high-contrast button:focus-visible,
+.af-high-contrast textarea:focus-visible,
+.af-high-contrast input:focus-visible {
+  outline-width: 3px;
+  outline-color: var(--text-primary);
+}
+.af-reduced-motion *,
+.af-reduced-motion *::before,
+.af-reduced-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.af-markdown {
+  line-height: 1.55;
+}
+.af-markdown > *:first-child {
+  margin-top: 0;
+}
+.af-markdown > *:last-child {
+  margin-bottom: 0;
+}
+.af-markdown p,
+.af-markdown ul,
+.af-markdown ol,
+.af-markdown blockquote,
+.af-markdown pre,
+.af-markdown table {
+  margin: 0 0 8px;
+}
+.af-markdown ul,
+.af-markdown ol {
+  padding-left: 20px;
+}
+.af-markdown li + li {
+  margin-top: 2px;
+}
+.af-markdown h1,
+.af-markdown h2,
+.af-markdown h3,
+.af-markdown h4 {
+  margin: 12px 0 6px;
+  line-height: 1.3;
+}
+.af-markdown h1:first-child,
+.af-markdown h2:first-child,
+.af-markdown h3:first-child,
+.af-markdown h4:first-child {
+  margin-top: 0;
+}
+.af-markdown code {
+  font-family: "SF Mono", "JetBrains Mono", Menlo, monospace;
+  font-size: 0.9em;
+  background: var(--elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+.af-markdown pre {
+  background: var(--elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 10px 12px;
+  overflow-x: auto;
+}
+.af-markdown pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.85em;
+  white-space: pre;
+}
+.af-markdown blockquote {
+  border-left: 3px solid var(--border-strong);
+  padding-left: 10px;
+  color: var(--text-muted);
+}
+.af-markdown a {
+  color: var(--accent);
+}
+.af-markdown table {
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+}
+.af-markdown th,
+.af-markdown td {
+  border: 1px solid var(--border-subtle);
+  padding: 4px 8px;
+  text-align: left;
+}
+.af-markdown hr {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  margin: 12px 0;
+}

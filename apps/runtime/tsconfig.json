@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "outDir": "dist", "rootDir": "src", "composite": true },
+  "references": [
+    { "path": "../../packages/application" },
+    { "path": "../../packages/adapter-fake" },
+    { "path": "../../packages/adapter-vercel-ai" },
+    { "path": "../../packages/protocol" }
+  ],
+  "include": ["src"]
+}

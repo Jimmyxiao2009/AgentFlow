@@ -1,0 +1,14 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+linkWorkspacePackages: true
+preferWorkspacePackages: true
+publicHoistPattern:
+  - "bindings"
+  - "file-uri-to-path"
+allowBuilds:
+  better-sqlite3: true
+  esbuild: true
+minimumReleaseAgeExclude:
+  - '@ai-sdk/gateway@2.0.135'
+  - ai@5.0.238

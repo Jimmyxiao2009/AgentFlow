@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Minimal capabilities for the AgentFlow main window",
+  "windows": ["main"],
+  "permissions": ["core:default", "dialog:default", "notification:default"]
+}

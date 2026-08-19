@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentflow.local/schemas/bridge-envelope.schema.json",
+  "title": "AgentFlow Bridge Request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "protocolVersion", "method", "payload"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "protocolVersion": { "const": 1 },
+    "method": { "type": "string", "pattern": "^[a-z][a-z0-9.]*$" },
+    "payload": {}
+  }
+}

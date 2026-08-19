@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "outDir": "dist", "rootDir": "src", "composite": true },
+  "references": [
+    { "path": "../domain" },
+    { "path": "../protocol" },
+    { "path": "../adapter-sdk" },
+    { "path": "../config" },
+    { "path": "../adapter-fake" },
+    { "path": "../persistence" },
+    { "path": "../routing-engine" },
+    { "path": "../git" },
+    { "path": "../workflow-engine" }
+  ],
+  "include": ["src"]
+}

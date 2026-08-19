@@ -1,0 +1,6 @@
+AgentFlow-Master-System-Prompt.md
+**/dist
+**/target
+**/*.tsbuildinfo
+apps/desktop/src-tauri/gen
+apps/desktop/src-tauri/icons
