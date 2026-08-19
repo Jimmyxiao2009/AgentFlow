@@ -84,6 +84,7 @@ describe("typed desktop bridge", () => {
           sequence,
           timestamp: "2026-08-03T00:00:00.000Z",
           type: "message.delta",
+          source: "adapter",
           payload: {},
         },
       });

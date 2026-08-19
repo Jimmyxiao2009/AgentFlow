@@ -55,6 +55,7 @@ export const bridgeEventSchema = z
     sequence: z.number().int().nonnegative(),
     timestamp: z.string().datetime(),
     type: z.string().min(1),
+    source: z.enum(["ui", "runtime", "adapter", "system"]).optional(),
     role: z.enum(["Planner", "Worker", "Reviewer", "Investigator"]).optional(),
     payload: z.unknown(),
   })
@@ -235,6 +236,7 @@ export type BridgeEvent<TPayload = unknown> = {
   sequence: number;
   timestamp: string;
   type: string;
+  source?: "ui" | "runtime" | "adapter" | "system";
   role?: AgentRole;
   payload: TPayload;
 };
