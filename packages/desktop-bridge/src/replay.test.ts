@@ -70,4 +70,30 @@ describe("renderer timeline replay", () => {
     ]);
     expect(messages[1]?.activity?.detail).toBe("2 files changed");
   });
+
+  it("orders mixed-aggregate events by timestamp, not per-aggregate sequence", () => {
+    // Two aggregates: a conversation (message.created, sequence 5, earlier in
+    // time) and a task aggregate (task.started, sequence 0, later in time).
+    // Sorting by sequence would put task.started first and scramble the order.
+    const messages = replayRuntimeTimeline([
+      {
+        id: "task-started",
+        type: "task.started",
+        runId: "run-3",
+        sequence: 0,
+        timestamp: "2026-08-20T10:00:02.000Z",
+        payload: { taskId: "task-3" },
+      },
+      {
+        id: "user-message",
+        type: "message.created",
+        sequence: 5,
+        timestamp: "2026-08-20T10:00:01.000Z",
+        payload: { id: "msg-3", role: "user", text: "earlier" },
+      },
+    ]);
+    // The user message (earlier timestamp) must precede the task activity.
+    expect(messages[0]?.id).toBe("msg-3");
+    expect(messages[1]?.activity?.title).toBe("Task started");
+  });
 });

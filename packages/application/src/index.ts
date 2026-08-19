@@ -576,6 +576,7 @@ export class AgentFlowApplication {
           this.emit({
             type: "patchset.recovered",
             aggregateId: patchSet.id,
+            conversationId: run.conversationId,
             changeRequestId: task.changeRequestId,
             taskId: task.id,
             runId: run.id,
@@ -3091,6 +3092,7 @@ export class AgentFlowApplication {
     this.emit({
       type: "integration.started",
       aggregateId: changeRequest.id,
+      conversationId: changeRequest.conversationId,
       changeRequestId: changeRequest.id,
       source: "runtime",
       payload: attempt,
@@ -3113,6 +3115,7 @@ export class AgentFlowApplication {
     this.emit({
       type: "integration.completed",
       aggregateId: changeRequest.id,
+      conversationId: changeRequest.conversationId,
       changeRequestId: changeRequest.id,
       source: "runtime",
       payload: { attempt, result },

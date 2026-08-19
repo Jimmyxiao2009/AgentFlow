@@ -4,6 +4,7 @@ export interface RuntimeTimelineEvent {
   role?: "Planner" | "Worker" | "Reviewer" | "Investigator";
   runId?: string;
   sequence?: number;
+  timestamp?: string;
   payload?: Record<string, unknown>;
 }
 
@@ -211,7 +212,19 @@ export function replayRuntimeTimeline(
       seenEventIds.add(event.id);
       return true;
     })
-    .sort((left, right) => (left.sequence ?? 0) - (right.sequence ?? 0));
+    // Order by wall-clock timestamp when available: `sequence` is a per-aggregate
+    // local counter, so sorting a mixed set of events from many aggregates by
+    // sequence scrambles the real time order (e.g. a task.started with
+    // sequence 0 landing before a message.created with sequence 5 that
+    // actually happened earlier). Fall back to sequence only when timestamps
+    // are missing or tie.
+    .sort((left, right) => {
+      if (left.timestamp && right.timestamp) {
+        const byTime = left.timestamp.localeCompare(right.timestamp);
+        if (byTime !== 0) return byTime;
+      }
+      return (left.sequence ?? 0) - (right.sequence ?? 0);
+    });
 
   for (const event of orderedEvents) {
     const payload = event.payload ?? {};
