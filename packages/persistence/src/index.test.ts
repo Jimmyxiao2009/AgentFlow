@@ -79,4 +79,36 @@ describe("sqlite event store", () => {
     reopened.close();
     rmSync(root, { recursive: true, force: true });
   });
+
+  it("never prunes an artifact still referenced by a live PatchSet/ValidationRun", () => {
+    const root = mkdtempSync(join(tmpdir(), "agentflow-prune-referenced-"));
+    const store = new SqliteEventStore(join(root, "runtime.db"));
+    const old = "2020-01-01T00:00:00.000Z";
+    // A referenced diff artifact well past any retention window.
+    const referenced = {
+      id: "diff-referenced",
+      kind: "diff" as const,
+      content: "referenced diff",
+      contentType: "text/x-diff",
+      createdAt: old,
+    };
+    store.saveArtifact(referenced);
+    // Add enough unreferenced old diff artifacts to exceed the "keep newest 50
+    // per kind" floor, so the referenced one would normally be pruned by age
+    // and only survives because it is referenced.
+    for (let index = 0; index < 55; index += 1)
+      store.saveArtifact({
+        id: `diff-old-${index}`,
+        kind: "diff",
+        content: `old ${index}`,
+        contentType: "text/x-diff",
+        createdAt: old,
+      });
+    // retentionDays = 1, but keep the referenced id.
+    const deleted = store.pruneArtifacts(1, new Set([referenced.id]));
+    expect(deleted).toBeGreaterThan(0);
+    expect(store.readArtifact(referenced.id)?.content).toBe("referenced diff");
+    store.close();
+    rmSync(root, { recursive: true, force: true });
+  });
 });

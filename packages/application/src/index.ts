@@ -736,10 +736,17 @@ export class AgentFlowApplication {
 
   /**
    * Prunes old artifacts (diffs, validation logs, transcripts) beyond the
-   * configured retention window to prevent unbounded SQLite growth.
+   * configured retention window to prevent unbounded SQLite growth. Artifacts
+   * still referenced by a live PatchSet or ValidationRun are preserved so
+   * pruning never corrupts historical PatchSet history.
    */
   pruneArtifacts(): number {
-    return this.store.pruneArtifacts(this.settings.retentionDays);
+    const referenced = new Set<string>();
+    for (const patchSet of this.patchSets.values())
+      if (patchSet.diffArtifactId) referenced.add(patchSet.diffArtifactId);
+    for (const validation of this.validationRuns.values())
+      if (validation.logArtifactId) referenced.add(validation.logArtifactId);
+    return this.store.pruneArtifacts(this.settings.retentionDays, referenced);
   }
 
   getSettings(): AgentFlowSettings {

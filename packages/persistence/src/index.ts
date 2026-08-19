@@ -213,12 +213,27 @@ export class SqliteEventStore {
       (this.db.prepare("SELECT COUNT(*) AS count FROM artifacts").get() as { count: number }).count,
     );
   }
-  /** Deletes artifacts older than `retentionDays`, keeping the most recent N per kind. */
-  pruneArtifacts(retentionDays: number): number {
+  /**
+   * Deletes artifacts older than `retentionDays`, keeping the most recent N per
+   * kind. Artifacts still referenced by a live PatchSet (diffArtifactId) or
+   * ValidationRun (logArtifactId) are never deleted — their IDs are passed in
+   * `keepIds` — so pruning retention never corrupts historical PatchSets whose
+   * diff/transcript the user may still open.
+   */
+  pruneArtifacts(retentionDays: number, keepIds: ReadonlySet<string> = new Set()): number {
     const cutoff = new Date(Date.now() - retentionDays * 86_400_000).toISOString();
+    // Build a parameterized NOT IN clause for referenced artifact IDs. Using a
+    // temporary CTE-joined values list keeps the query shape stable regardless
+    // of how many references exist (including zero).
+    const keepList = [...keepIds];
+    const keepClause = keepList.length
+      ? `AND id NOT IN (${keepList.map(() => "?").join(",")})`
+      : "";
     const result = this.db
-      .prepare("DELETE FROM artifacts WHERE created_at < ? AND id NOT IN (SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY kind ORDER BY created_at DESC) AS rn FROM artifacts) t WHERE rn <= 50)")
-      .run(cutoff);
+      .prepare(
+        `DELETE FROM artifacts WHERE created_at < ? AND id NOT IN (SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY kind ORDER BY created_at DESC) AS rn FROM artifacts) t WHERE rn <= 50) ${keepClause}`,
+      )
+      .run(cutoff, ...keepList);
     return result.changes;
   }
   close(): void {
