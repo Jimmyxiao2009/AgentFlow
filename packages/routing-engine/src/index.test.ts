@@ -52,6 +52,37 @@ describe("explainable auto routing", () => {
     expect(decision.reason).toBe("No eligible candidate is configured");
   });
 
+  it("routes to vercel-ai by default, matching what the desktop runtime actually registers", () => {
+    // apps/runtime/src/main.ts only ever registers the "vercel-ai" adapter
+    // (plus "fake" in test builds) -- never "maf". A preset route that
+    // didn't consider "vercel-ai" would find zero eligible candidates for
+    // every default ("Auto") run.
+    const decision = route(
+      {
+        preset: "Balanced",
+        role: "Worker",
+        permissionProfile: "Workspace Write",
+        workerCount: 1,
+        executionStrategy: "Serial",
+      },
+      {
+        profiles: [
+          { id: "profile-vercel-ai", name: "Vercel AI SDK", adapterId: "vercel-ai", status: "Ready" },
+        ],
+        models: [],
+        availableAdapters: ["vercel-ai"],
+        requestedRole: "Worker",
+      },
+      "routing-vercel-ai",
+    );
+
+    expect(decision.selected).toMatchObject({
+      adapterId: "vercel-ai",
+      profileId: "profile-vercel-ai",
+      eligible: true,
+    });
+  });
+
   it("rejects automatic permission escalation", () => {
     expect(() => assertNoSilentEscalation("Read Only", "Workspace Write")).toThrow(
       "cannot escalate permission",
@@ -78,7 +109,9 @@ describe("explainable auto routing", () => {
       "routing-profile",
     );
     expect(profileDecision.selected).toBeUndefined();
-    expect(profileDecision.rejectedCandidates[0]).toContain("Explicit authentication profile");
+    expect(profileDecision.rejectedCandidates).toContainEqual(
+      expect.stringContaining("Explicit authentication profile"),
+    );
 
     const modelDecision = route(
       {

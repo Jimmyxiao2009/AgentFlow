@@ -15,12 +15,18 @@ export interface RoutingContext {
   requestedRole: AgentRole;
 }
 
+// "vercel-ai" is the adapter the desktop runtime actually registers
+// (see apps/runtime/src/main.ts); "maf" and "fake" are kept as fallbacks
+// for deployments/tests that configure them instead. Without "vercel-ai"
+// here, every preset-routed run (i.e. anything that doesn't pin an
+// explicit adapterId -- the UI's default "Auto" model selection included)
+// would find zero eligible candidates and fail closed.
 const rank: Record<RunConfiguration["preset"], string[]> = {
-  Balanced: ["maf", "fake"],
-  Fast: ["maf", "fake"],
-  Quality: ["maf", "fake"],
-  Conservative: ["maf", "fake"],
-  Parallel: ["maf", "fake"],
+  Balanced: ["vercel-ai", "maf", "fake"],
+  Fast: ["vercel-ai", "maf", "fake"],
+  Quality: ["vercel-ai", "maf", "fake"],
+  Conservative: ["vercel-ai", "maf", "fake"],
+  Parallel: ["vercel-ai", "maf", "fake"],
   Manual: [],
 };
 
