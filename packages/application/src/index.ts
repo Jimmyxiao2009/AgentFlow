@@ -1335,6 +1335,7 @@ export class AgentFlowApplication {
     payload: unknown,
     signal = new AbortController().signal,
     resumeNativeSessionId?: string,
+    retryContext?: { attempt: number; retryOf: string },
   ): Promise<MessageResult> {
     const input = parseMethodPayload("message.send", payload);
     const conversation = this.conversations.get(input.conversationId);
@@ -1526,7 +1527,12 @@ export class AgentFlowApplication {
         conversationId: conversation.id,
         role: session.role,
         state: "Running",
-        attempt: 1,
+        // Set the attempt/retryOf at creation time so a retried run that FAILS
+        // persists the correct attempt — previously attempt was hardcoded to 1
+        // and only written back after success, so a failing retry chain kept
+        // attempt=1 forever and the retry limit was never enforced.
+        attempt: retryContext?.attempt ?? 1,
+        retryOf: retryContext?.retryOf,
         startedAt: now(),
       };
       this.sessions.set(session.id, session);
@@ -2207,6 +2213,7 @@ export class AgentFlowApplication {
   async runTask(
     payload: unknown,
     signal = new AbortController().signal,
+    retryContext?: { attempt: number; retryOf: string },
   ): Promise<{ task: Task; run: AgentRun; workspace: Workspace; patchSet?: PatchSet }> {
     const input = parseMethodPayload("task.run", payload);
     let task = this.tasks.get(input.taskId);
@@ -2303,7 +2310,10 @@ export class AgentFlowApplication {
       taskId: task.id,
       role: "Worker",
       state: "Running",
-      attempt: 1,
+      // Set attempt/retryOf at creation so a retried run that fails still
+      // persists the correct attempt (see sendMessage for the full rationale).
+      attempt: retryContext?.attempt ?? 1,
+      retryOf: retryContext?.retryOf,
       workspaceId: undefined,
       startedAt: now(),
     };
@@ -3171,6 +3181,7 @@ export class AgentFlowApplication {
       payload: { previousRunId: previous.id },
     });
     const previousSession = this.sessions.get(previous.sessionId);
+    const retryContext = { attempt: previous.attempt + 1, retryOf: previous.id };
     if (request.mode === "Implement" && previous.taskId) {
       const result = await this.runTask(
         {
@@ -3183,10 +3194,8 @@ export class AgentFlowApplication {
           resumeNativeSessionId: resume ? previousSession?.nativeSessionId : undefined,
         },
         new AbortController().signal,
+        retryContext,
       );
-      result.run.attempt = previous.attempt + 1;
-      result.run.retryOf = previous.id;
-      this.store.saveProjection(`run:${result.run.id}`, 1, result.run);
       return {
         messageId: id("message"),
         text: `Retried task ${result.task.key} and produced ${result.patchSet?.id ?? "no PatchSet"}.`,
@@ -3207,12 +3216,11 @@ export class AgentFlowApplication {
       },
       new AbortController().signal,
       resume ? previousSession?.nativeSessionId : undefined,
+      retryContext,
     );
     if (result.runId) {
       const replacement = this.runs.get(result.runId);
       if (replacement) {
-        replacement.attempt = previous.attempt + 1;
-        replacement.retryOf = previous.id;
         this.store.saveProjection(`run:${replacement.id}`, 1, replacement);
       }
     }
