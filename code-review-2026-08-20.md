@@ -161,11 +161,13 @@
 排子 agent 扫描仓库（安全/权限、正确性/状态机、UI/UX、Rust/IPC），发现并修复：
 
 **安全/权限**
+
 - ✅ `getSettings()`/`status()` 把明文 apiKey 经 live bridge 回传渲染层（仅审计日志/localStorage 此前已脱敏）。新增 `getSettingsForRenderer()` 脱敏，用于 `status()` 与 `settings.get`（+回归断言）。
 - ✅ 审批决策语义：实现 `allow-task`/`allow-conversation`/`add-project-rule` 的 scope 记忆（`resolvePermissionForRun` 自动放行同 scope 同指纹请求；`add-project-rule` 暂作 conversation scope）。
 - 已知遗留：`assertNoSilentEscalation` 仍是死代码（route() 不改写 permissionProfile，无 live 升级路径，guard 暂保留为未来钩子）；`AGENTFLOW_RUNTIME_TOKEN` 仍是空头承诺（私有管道，风险有限）。
 
 **正确性/状态机**
+
 - ✅ `patchset.created`（runTask + orchestrator）、`review.requested`、`review.completed` 缺 `conversationId` —— 时间线不可见。四处补齐（同问题1类别，首轮只修了 recovered/integration）。
 - ✅ `integrate` Conflict 不记 `failureReason`、Failed 不转 Failed（卡在 IntegrationReady）。现在记录原因并按状态转移。
 - ✅ `runValidation` 失败路径不删持久化 lease 行 —— 现补 `deleteTaskLease`。
@@ -174,6 +176,7 @@
 - 已知遗留：`releaseExpired` 仍无 live 调用（zombie lease 由 restart 路径回收；Running 回收逻辑已就位但无定时器触发）。
 
 **UI/UX**
+
 - ✅ run 结束（completed/cancelled/failed）后流式消息光标永久闪烁 —— `finalizeStreamingMessage` 翻 streaming:false。
 - ✅ `message.delta` 未按会话隔离 + `selectConversation` 未清 streamMessageRef —— 跨会话串话。已修。
 - ✅ 成功 run 也设 `failedRunId` → 误导 Retry 按钮 —— 仅 cancelled/failed 设。
@@ -184,6 +187,7 @@
 - 已知遗留：`relativeTime` 不刷新（LOW）、命令面板焦点管理、键盘可达性（见第七节）、DiffViewer 未 memo（LOW）。
 
 **Rust/IPC**
+
 - ✅ reader 线程死而 child 活时永不恢复（每请求 60s 超时）—— `reader_alive` AtomicBool + RAII guard，`ensure_sidecar` 检测到则 kill child 走重启路径。
 - ✅ Unix 关闭时 debug 子进程孤儿化（SIGKILL 定时器 unref 被 process.exit 取消）—— 新增 `killAllNow()` 同步强杀，`close()` 改用之。
 - ✅ `this.models` 数据竞争（probeProfiles 起始 clear，并发 run 读到空 map）—— local-then-atomic-swap。
@@ -192,6 +196,7 @@
 - 已知遗留：CSP release 精简（见第七节）。
 
 **工程**
+
 - ✅ `security:scan` 扫描整个 `.pnpm-store`/`.kun-canvas`（数万文件）CI 超时 —— 排除之；跳过 `.test/.spec` 避免假阳性。
 - ✅ 全仓 `prettier --write`，`format:check` 通过。
 
