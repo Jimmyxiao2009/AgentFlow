@@ -78,7 +78,8 @@ export function route(
       rejectionReason: rejectedReason,
     });
   }
-  const selected = candidates.find((candidate) => candidate.eligible);
+  const selectedIndex = candidates.findIndex((candidate) => candidate.eligible);
+  const selected = selectedIndex >= 0 ? candidates[selectedIndex] : undefined;
   const rejectedCandidates = candidates
     .filter((candidate) => !candidate.eligible)
     .map((candidate) => `${candidate.adapterId}: ${candidate.rejectionReason}`);
@@ -91,7 +92,12 @@ export function route(
     reason: selected
       ? `${selected.adapterId} is the first eligible candidate for ${configuration.preset}`
       : "No eligible candidate is configured",
-    fallbackAttempts: candidates.slice(0, -1).map((candidate) => candidate.adapterId),
+    // Adapters actually tried (and rejected) before the selected one. The
+    // previous slice(0, -1) dropped the last candidate regardless of which was
+    // selected, misreporting the selected adapter as a fallback attempt.
+    fallbackAttempts: candidates
+      .slice(0, selectedIndex >= 0 ? selectedIndex : candidates.length)
+      .map((candidate) => candidate.adapterId),
     rejectedCandidates,
     createdAt: now,
   };

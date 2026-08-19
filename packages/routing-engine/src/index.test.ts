@@ -31,6 +31,10 @@ describe("explainable auto routing", () => {
       "fake: No configured ready authentication profile",
     );
     expect(decision.reason).toContain("maf is the first eligible candidate");
+    // fallbackAttempts lists the adapters tried (and rejected) BEFORE the
+    // selected one — here vercel-ai (no profile) was tried before maf was
+    // selected. The previous slice(0,-1) implementation misreported this.
+    expect(decision.fallbackAttempts).toEqual(["vercel-ai"]);
   });
 
   it("fails closed when no configured candidate is eligible", () => {

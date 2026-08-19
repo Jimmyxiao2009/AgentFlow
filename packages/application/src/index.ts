@@ -2129,8 +2129,11 @@ export class AgentFlowApplication {
       return changeRequest;
     }
     changeRequest.state = transitionChangeRequest(changeRequest.state, "Ready");
-    if (input.action === "approve-and-run")
-      changeRequest.state = transitionChangeRequest(changeRequest.state, "Running");
+    // "approve-and-run" approves the plan (-> Ready). The CR itself does not
+    // execute tasks — that happens when the user sends an Implement message,
+    // which routes to runReadyTasks and moves the CR to Running with actual
+    // runs in flight. Previously approve-and-run flipped the CR to Running
+    // here with no run launched, leaving it stuck in Running indefinitely.
     changeRequest.updatedAt = now();
     const specification = changeRequest.specificationRevisionId
       ? this.specifications.get(changeRequest.specificationRevisionId)
@@ -2823,6 +2826,10 @@ export class AgentFlowApplication {
     } catch (error: unknown) {
       const next = this.scheduler.complete(task.id, "ValidationFailed");
       this.saveTask(next);
+      // Delete the persisted lease row to match the in-memory scheduler state
+      // (complete() cleared the lease); otherwise taskLeases() returns a
+      // phantom row for a ValidationFailed task until the next restart.
+      this.store.deleteTaskLease(task.id);
       // Revert changeRequest from Validating back to Running so the user can retry.
       if (changeRequest?.state === "Validating") {
         changeRequest.state = transitionChangeRequest(changeRequest.state, "Running");
