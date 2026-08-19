@@ -2617,6 +2617,7 @@ export class AgentFlowApplication {
       this.emit({
         type: "patchset.created",
         aggregateId: patchSet.id,
+        conversationId: run.conversationId,
         changeRequestId: changeRequest.id,
         taskId: task.id,
         runId: run.id,
@@ -2812,6 +2813,7 @@ export class AgentFlowApplication {
       this.emit({
         type: "review.requested",
         aggregateId: patchSet.id,
+        conversationId: changeRequest?.conversationId,
         taskId: task.id,
         runId: patchSet.producingRunId,
         source: "runtime",
@@ -3103,6 +3105,7 @@ export class AgentFlowApplication {
     this.emit({
       type: "review.completed",
       aggregateId: patchSet.id,
+      conversationId: reviewerRun.conversationId,
       changeRequestId: review.changeRequestId,
       runId: reviewerRunId,
       source: "runtime",
@@ -3289,10 +3292,19 @@ export class AgentFlowApplication {
     attempt.completedAt = now();
     this.store.saveProjection(`integration:${attempt.id}`, 1, attempt);
     changeRequest.integrationBranch = integrationBranch;
-    changeRequest.state =
-      result.status === "Completed"
-        ? transitionChangeRequest(changeRequest.state, "Completed")
-        : changeRequest.state;
+    if (result.status === "Completed") {
+      changeRequest.state = transitionChangeRequest(changeRequest.state, "Completed");
+      changeRequest.failureReason = undefined;
+    } else if (result.status === "Failed") {
+      // A genuine integration failure (not a retryable conflict) moves the
+      // change request to Failed so it is not stuck in IntegrationReady with
+      // no path forward. Record the reason for diagnostics.
+      changeRequest.state = transitionChangeRequest(changeRequest.state, "Failed");
+      changeRequest.failureReason = result.message.slice(0, 2_000);
+    } else {
+      // Conflict: stay IntegrationReady (retryable) but record why.
+      changeRequest.failureReason = result.message.slice(0, 2_000);
+    }
     this.store.saveProjection(`cr:${changeRequest.id}`, 1, changeRequest);
     this.emit({
       type: "integration.completed",

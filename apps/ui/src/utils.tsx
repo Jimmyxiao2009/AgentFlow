@@ -526,6 +526,16 @@ export function localizedStatus(locale: Locale, state: string) {
 }
 
 /**
+ * Safely extract a message from a caught value. IPC/bridge rejections are not
+ * always Error instances (they can be strings, undefined, or plain objects),
+ * so a bare `error.message` can itself throw inside a catch block and turn a
+ * handled error into a silent unhandled rejection with no user feedback.
+ */
+export function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
  * Returns a shallow copy of the settings with provider API keys blanked.
  * Used when persisting UI-only state to localStorage: the renderer must never
  * store secrets (docs/security.md). The live key is owned by the sidecar

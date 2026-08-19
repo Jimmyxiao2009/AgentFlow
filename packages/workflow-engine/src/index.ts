@@ -540,6 +540,7 @@ export class WorkflowOrchestrator {
       schemaVersion: 1,
       type: "patchset.created",
       aggregateId: patchSet.id,
+      conversationId: execution.run.conversationId,
       taskId: patchSet.taskId,
       runId: patchSet.producingRunId,
       sequence: patchSet.sequence,

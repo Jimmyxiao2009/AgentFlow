@@ -52,6 +52,19 @@ export const VirtualTimeline = React.memo(function VirtualTimeline({
     overscan: 8,
   });
   const lastMessageLength = messages.at(-1)?.text?.length ?? 0;
+  // Detect a conversation switch (the first message identity changed, not just
+  // a new message appended) and re-stick to bottom so the newly-loaded
+  // conversation shows its latest messages instead of inheriting the scroll
+  // position the user left the previous conversation at.
+  const firstMessageIdRef = useRef<string | number | undefined>(undefined);
+  useEffect(() => {
+    const firstId = messages[0]?.id;
+    if (firstId !== firstMessageIdRef.current) {
+      firstMessageIdRef.current = firstId;
+      stickToBottomRef.current = true;
+      setShowJumpToLatest(false);
+    }
+  }, [messages]);
   useEffect(() => {
     if (!stickToBottomRef.current || !groupedMessages.length) return;
     window.requestAnimationFrame(() =>

@@ -35,6 +35,7 @@ import {
   settingsWithoutSecrets,
   uiSettingsToRuntime,
   localizedStatus,
+  errorMessage,
 } from "./utils";
 import {
   PlanApprovalCard,
@@ -187,7 +188,7 @@ export default function AgentFlowWorkspace() {
   } | null>({ key: "Runtime.Unavailable" });
 
   const [settings, setSettings] = useState(() => ({ ...defaultUiSettings }));
-  const setSetting = (key, value) => {
+  const setSetting = useCallback((key, value) => {
     settingsEditedRef.current = true;
     settingsHydratedRef.current = true;
     setSettings((s) => ({ ...s, [key]: value }));
@@ -200,7 +201,14 @@ export default function AgentFlowWorkspace() {
     ) {
       void globalThis.Notification.requestPermission();
     }
-  };
+  }, []);
+  // Memoized so InspectorPanel's drag-listener effect (which depends on
+  // onResizeWidth) does not tear down and re-add global mousemove/mouseup
+  // listeners on every parent re-render during streaming.
+  const onResizeInspectorWidth = useCallback(
+    (value: number) => setSetting("inspectorWidth", value),
+    [setSetting],
+  );
   const locale = resolveUiLocale(settings.language);
   const labels = {
     newConversation: t(locale, "Navigation.NewConversation"),
@@ -372,6 +380,20 @@ export default function AgentFlowWorkspace() {
           status.permissions?.find((request) => request.status === "Pending") || null,
         );
       };
+      // Mark the in-flight streaming agent message as finished (drop the typing
+      // cursor) and clear the stream ref. Called on run completed/cancelled/
+      // failed and on conversation switch so a partial message never keeps a
+      // pulsing cursor after the run has ended or the user has navigated away.
+      const finalizeStreamingMessage = () => {
+        const messageId = streamMessageRef.current;
+        if (messageId)
+          setTimelineMessages((messages) =>
+            messages.map((message) =>
+              message.id === messageId ? { ...message, streaming: false } : message,
+            ),
+          );
+        streamMessageRef.current = null;
+      };
       unsubscribe = typedBridge.subscribe((event) => {
         const workflowEvent = event;
         const payload: WorkflowPayload =
@@ -426,12 +448,18 @@ export default function AgentFlowWorkspace() {
         if (workflowEvent.type === "run.completed" || workflowEvent.type === "run.cancelled") {
           setSending(false);
           setActiveRunId(null);
-          setFailedRunId(workflowEvent.runId);
+          // A successful completion is not retryable — only failed/cancelled
+          // runs are. Setting failedRunId here showed a misleading "Retry"
+          // button after every successful run.
+          if (workflowEvent.type === "run.cancelled") setFailedRunId(workflowEvent.runId);
+          else setFailedRunId(null);
+          finalizeStreamingMessage();
         }
         if (workflowEvent.type === "run.failed") {
           setSending(false);
           setActiveRunId(null);
           setFailedRunId(workflowEvent.runId);
+          finalizeStreamingMessage();
         }
         if (workflowEvent.type === "debug.started") setDebugRunning(true);
         if (workflowEvent.type === "debug.stopped" || workflowEvent.type === "debug.exited")
@@ -648,7 +676,7 @@ export default function AgentFlowWorkspace() {
       setRuntimeData(await bridge.status());
       setLocalizedRuntimeState("Runtime.AdaptersProbed");
     } catch (error) {
-      setLocalizedRuntimeState("Runtime.AdapterProbeFailed", { error: error.message });
+      setLocalizedRuntimeState("Runtime.AdapterProbeFailed", { error: errorMessage(error) });
     }
   };
 
@@ -734,7 +762,7 @@ export default function AgentFlowWorkspace() {
         setSending(false);
       })
       .catch((error) => {
-        setLocalizedRuntimeState("Runtime.RequestFailed", { error: error.message });
+        setLocalizedRuntimeState("Runtime.RequestFailed", { error: errorMessage(error) });
         setSending(false);
       });
   };
@@ -774,7 +802,7 @@ export default function AgentFlowWorkspace() {
         setSending(false);
       })
       .catch((error) => {
-        setLocalizedRuntimeState("Runtime.RequestFailed", { error: error.message });
+        setLocalizedRuntimeState("Runtime.RequestFailed", { error: errorMessage(error) });
         setSending(false);
       });
   };
@@ -848,7 +876,7 @@ export default function AgentFlowWorkspace() {
         setLocalizedRuntimeState("Runtime.DefaultProjectDirectorySet", { path: selected });
       }
     } catch (error) {
-      setLocalizedRuntimeState("Runtime.DefaultProjectDirectoryFailed", { error: error.message });
+      setLocalizedRuntimeState("Runtime.DefaultProjectDirectoryFailed", { error: errorMessage(error) });
     }
   };
 
@@ -870,7 +898,7 @@ export default function AgentFlowWorkspace() {
           .then(setRepositoryStatus)
           .then(() => setLocalizedRuntimeState("Runtime.RepositoryStatusRefreshed"))
           .catch((error) =>
-            setLocalizedRuntimeState("Runtime.RepositoryStatusFailed", { error: error.message }),
+            setLocalizedRuntimeState("Runtime.RepositoryStatusFailed", { error: errorMessage(error) }),
           );
       } else setLocalizedRuntimeState("Runtime.RepositoryStatusUnavailable");
       return true;
@@ -902,7 +930,7 @@ export default function AgentFlowWorkspace() {
         setRuntimeConversationId(conversation.id);
         setLocalizedRuntimeState("Runtime.NewConversationReady");
       } catch (error) {
-        setLocalizedRuntimeState("Runtime.NewConversationFailed", { error: error.message });
+        setLocalizedRuntimeState("Runtime.NewConversationFailed", { error: errorMessage(error) });
       }
     } else setLocalizedRuntimeState("Runtime.OpenRepositoryBeforeNewConversation");
   };
@@ -922,7 +950,7 @@ export default function AgentFlowWorkspace() {
           decision: decision.replaceAll("-", " "),
         });
       } catch (error) {
-        setLocalizedRuntimeState("Runtime.PermissionResolutionFailed", { error: error.message });
+        setLocalizedRuntimeState("Runtime.PermissionResolutionFailed", { error: errorMessage(error) });
       }
       return;
     }
@@ -934,7 +962,7 @@ export default function AgentFlowWorkspace() {
         await bridge.stopRun(activeRunId);
         setLocalizedRuntimeState("Runtime.RunStopRequested");
       } catch (error) {
-        setLocalizedRuntimeState("Runtime.RunStopFailed", { error: error.message });
+        setLocalizedRuntimeState("Runtime.RunStopFailed", { error: errorMessage(error) });
       }
     } else {
       setLocalizedRuntimeState("Runtime.NoActiveRun");
@@ -961,7 +989,7 @@ export default function AgentFlowWorkspace() {
           { id: `retry-result-${Date.now()}`, role: "agent", text: result.text, streaming: false },
         ]);
     } catch (error) {
-      setLocalizedRuntimeState("Runtime.RetryFailed", { error: error.message });
+      setLocalizedRuntimeState("Runtime.RetryFailed", { error: errorMessage(error) });
       setSending(false);
     }
   };
@@ -983,7 +1011,7 @@ export default function AgentFlowWorkspace() {
         setLocalizedRuntimeState("Runtime.PlanState", { state: changeRequest.state });
         return;
       } catch (error) {
-        setLocalizedRuntimeState("Runtime.PlanApprovalFailed", { error: error.message });
+        setLocalizedRuntimeState("Runtime.PlanApprovalFailed", { error: errorMessage(error) });
         return;
       }
     }
@@ -1078,6 +1106,10 @@ export default function AgentFlowWorkspace() {
         runtimeData?.events?.filter((event) => event.conversationId === conversationId),
       ),
     );
+    // Clear the streaming ref so deltas from a run in the previous
+    // conversation do not bleed a new streaming bubble into this one.
+    streamMessageRef.current = null;
+    setFailedRunId(null);
     setLocalizedRuntimeState("Runtime.ConversationSelected", { conversation: conversationId });
   };
   const selectProject = async (projectId) => {
@@ -1114,7 +1146,7 @@ export default function AgentFlowWorkspace() {
     } catch (error) {
       setRuntimeConversationId(null);
       setTimelineMessages([]);
-      setLocalizedRuntimeState("Runtime.NewConversationFailed", { error: error.message });
+      setLocalizedRuntimeState("Runtime.NewConversationFailed", { error: errorMessage(error) });
     }
   };
   const discoveredModels = (runtimeData?.models || []).filter((item) => item.adapterId !== "fake");
@@ -1265,7 +1297,7 @@ export default function AgentFlowWorkspace() {
       await bridge.updateProject(currentProject.id, { debugCommand });
       setRuntimeData(await bridge.status());
     } catch (error) {
-      setLocalizedRuntimeState("Runtime.RequestFailed", { error: error.message });
+      setLocalizedRuntimeState("Runtime.RequestFailed", { error: errorMessage(error) });
     }
   };
   const startDebug = async () => {
@@ -1273,7 +1305,7 @@ export default function AgentFlowWorkspace() {
     try {
       await bridge.startDebugProcess(currentProject.id);
     } catch (error) {
-      setLocalizedRuntimeState("Runtime.RequestFailed", { error: error.message });
+      setLocalizedRuntimeState("Runtime.RequestFailed", { error: errorMessage(error) });
     }
   };
   const stopDebug = async () => {
@@ -1281,7 +1313,7 @@ export default function AgentFlowWorkspace() {
     try {
       await bridge.stopDebugProcess(currentProject.id);
     } catch (error) {
-      setLocalizedRuntimeState("Runtime.RequestFailed", { error: error.message });
+      setLocalizedRuntimeState("Runtime.RequestFailed", { error: errorMessage(error) });
     }
   };
   const currentSpecification = currentChangeRequest?.specificationRevisionId
@@ -1319,7 +1351,7 @@ export default function AgentFlowWorkspace() {
       });
       setRuntimeData(await bridge.status());
     } catch (error) {
-      setLocalizedRuntimeState("Runtime.TaskFailed", { error: error.message });
+      setLocalizedRuntimeState("Runtime.TaskFailed", { error: errorMessage(error) });
     }
   };
   const runReadyTasks = async () => {
@@ -1332,7 +1364,7 @@ export default function AgentFlowWorkspace() {
       });
       setRuntimeData(await bridge.status());
     } catch (error) {
-      setLocalizedRuntimeState("Runtime.ParallelTaskFailed", { error: error.message });
+      setLocalizedRuntimeState("Runtime.ParallelTaskFailed", { error: errorMessage(error) });
     }
   };
   const runValidation = async (patchSetId) => {
@@ -1342,7 +1374,7 @@ export default function AgentFlowWorkspace() {
       await bridge.runValidation(patchSetId);
       setRuntimeData(await bridge.status());
     } catch (error) {
-      setLocalizedRuntimeState("Runtime.ValidationFailed", { error: error.message });
+      setLocalizedRuntimeState("Runtime.ValidationFailed", { error: errorMessage(error) });
     }
   };
   const startReview = async (patchSetId) => {
@@ -1352,7 +1384,7 @@ export default function AgentFlowWorkspace() {
       await bridge.startReview(patchSetId, selectedAdapter);
       setRuntimeData(await bridge.status());
     } catch (error) {
-      setLocalizedRuntimeState("Runtime.ReviewFailed", { error: error.message });
+      setLocalizedRuntimeState("Runtime.ReviewFailed", { error: errorMessage(error) });
     }
   };
   const sendFindingsToFixer = () => {
@@ -1383,7 +1415,7 @@ export default function AgentFlowWorkspace() {
       const artifact = await bridge.readArtifact(artifactId);
       setArtifactContent(artifact);
     } catch (error) {
-      setLocalizedRuntimeState("Runtime.ArtifactUnavailable", { error: error.message });
+      setLocalizedRuntimeState("Runtime.ArtifactUnavailable", { error: errorMessage(error) });
     } finally {
       setArtifactLoading(false);
     }
@@ -1413,7 +1445,7 @@ export default function AgentFlowWorkspace() {
       await bridge.integrate(runtimeChangeRequestId, approvedPatchSets);
       setRuntimeData(await bridge.status());
     } catch (error) {
-      setLocalizedRuntimeState("Runtime.IntegrationFailed", { error: error.message });
+      setLocalizedRuntimeState("Runtime.IntegrationFailed", { error: errorMessage(error) });
     }
   };
   const approvePatchSet = async (patchSetId) => {
@@ -1423,7 +1455,7 @@ export default function AgentFlowWorkspace() {
       await bridge.integrate(runtimeChangeRequestId, [patchSetId]);
       setRuntimeData(await bridge.status());
     } catch (error) {
-      setLocalizedRuntimeState("Runtime.IntegrationFailed", { error: error.message });
+      setLocalizedRuntimeState("Runtime.IntegrationFailed", { error: errorMessage(error) });
     }
   };
   const rejectPatchSet = (patchSetId) => {
@@ -1457,7 +1489,7 @@ export default function AgentFlowWorkspace() {
       ]);
       setLocalizedRuntimeState("Runtime.PullRequestReady");
     } catch (error) {
-      setLocalizedRuntimeState("Runtime.PullRequestFailed", { error: error.message });
+      setLocalizedRuntimeState("Runtime.PullRequestFailed", { error: errorMessage(error) });
     }
   };
   const selectedAccent = accentColors[settings.accent] || accentColors.Blue;
@@ -1780,7 +1812,7 @@ export default function AgentFlowWorkspace() {
         approvePatchSet={approvePatchSet}
         rejectPatchSet={rejectPatchSet}
         width={settings.inspectorWidth}
-        onResizeWidth={(value) => setSetting("inspectorWidth", value)}
+        onResizeWidth={onResizeInspectorWidth}
         currentProject={currentProject}
         updateDebugCommand={updateDebugCommand}
         debugRunning={debugRunning}
