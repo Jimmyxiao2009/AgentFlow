@@ -136,7 +136,7 @@ async function handle(line: string): Promise<void> {
                                   : request.method === "pull-request.project"
                                     ? application.projectPullRequest(request.payload)
                                     : request.method === "settings.get"
-                                      ? application.getSettings()
+                                      ? application.getSettingsForRenderer()
                                       : request.method === "settings.save"
                                         ? await (async () => {
                                             const saved = application.saveSettings(request.payload);

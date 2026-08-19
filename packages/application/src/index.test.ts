@@ -177,6 +177,9 @@ describe("application settings security", () => {
     expect(auditText).toContain("[REDACTED]");
     // The live settings projection still holds the key for the sidecar's own use.
     expect(app.getSettings().aiProviders[0]?.apiKey).toBe(secret);
+    // But the renderer-facing view (status()/settings.get) never carries the key.
+    expect(app.getSettingsForRenderer().aiProviders[0]?.apiKey).toBe("");
+    expect(app.status().settings.aiProviders[0]?.apiKey).toBe("");
     app.close();
     rmSync(root, { recursive: true, force: true });
   });

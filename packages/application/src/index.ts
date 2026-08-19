@@ -308,6 +308,11 @@ export class AgentFlowApplication {
   private readonly integration = new IntegrationService();
   private readonly orchestrator: WorkflowOrchestrator;
   private readonly activeRuns = new Map<string, AbortController>();
+  // Scoped permission grants: when a user picks "allow-task" or
+  // "allow-conversation", the approved permission fingerprint is remembered so
+  // the same request (same command/workingDirectory/reason) does not re-prompt
+  // within that scope. Keyed by `task:<taskId>` or `conversation:<conversationId>`.
+  private readonly grantedScopes = new Map<string, Set<string>>();
   private readonly pendingApprovals = new Map<
     string,
     {
@@ -753,6 +758,25 @@ export class AgentFlowApplication {
     return { ...this.settings };
   }
 
+  /**
+   * Settings returned across the bridge to the renderer never carry provider
+   * API keys (docs/security.md: "renderer never receives provider tokens").
+   * The sidecar keeps the live key internally via getSettings() for running
+   * providers (vercelAiAdapter); the renderer only needs to know a provider
+   * was configured, not its secret. The renderer preserves a locally-edited
+   * key in its own state and re-sends it on save, so blanking the echo does
+   * not clear a configured key.
+   */
+  getSettingsForRenderer(): AgentFlowSettings {
+    return {
+      ...this.settings,
+      aiProviders: this.settings.aiProviders.map((provider) => ({
+        ...provider,
+        apiKey: "",
+      })),
+    };
+  }
+
   saveSettings(payload: unknown): AgentFlowSettings {
     const input = parseMethodPayload("settings.save", payload);
     this.settings = migrateSettings(input.settings);
@@ -807,6 +831,46 @@ export class AgentFlowApplication {
     this.permissionRequests.set(request.id, request);
     this.store.saveProjection(`permission:${request.id}`, 1, request);
     return request;
+  }
+
+  /**
+   * A stable fingerprint of what a permission request asks for, so an
+   * allow-task/allow-conversation grant can match a later identical request
+   * without re-prompting. Command, working directory, reason, and the
+   * requested boolean dimensions are the distinguishing fields.
+   */
+  private permissionFingerprint(request: PermissionRequest): string {
+    const dims = request.requested;
+    const booleans = [
+      "network",
+      "packageInstall",
+      "dependencyChanges",
+      "projectFileChanges",
+      "externalProcesses",
+      "secretAccess",
+      "clipboard",
+      "browser",
+      "externalDirectories",
+      "remoteGit",
+    ]
+      .map((key) => `${key}=${Boolean(dims[key as keyof typeof dims])}`)
+      .join(",");
+    return `${request.command ?? ""}|${request.workingDirectory ?? ""}|${request.reason}|${booleans}`;
+  }
+
+  /** Records a scoped grant (allow-task / allow-conversation) for later reuse. */
+  private recordScopedGrant(scopeKey: string, request: PermissionRequest): void {
+    let set = this.grantedScopes.get(scopeKey);
+    if (!set) {
+      set = new Set();
+      this.grantedScopes.set(scopeKey, set);
+    }
+    set.add(this.permissionFingerprint(request));
+  }
+
+  /** True if an identical request was already granted within the scope. */
+  private hasScopedGrant(scopeKey: string, request: PermissionRequest): boolean {
+    return this.grantedScopes.get(scopeKey)?.has(this.permissionFingerprint(request)) ?? false;
   }
 
   private permissionExceedsEffective(request: PermissionRequest): boolean {
@@ -884,6 +948,39 @@ export class AgentFlowApplication {
     });
     if (!decision.selected?.profileId) throw new Error(`Run route unavailable: ${decision.reason}`);
     return decision.selected;
+  }
+
+  /**
+   * Resolves a permission request for an in-flight run. If the user previously
+   * granted an identical request within the task or conversation scope, the
+   * request is auto-allowed (recorded + emitted) without re-prompting;
+   * otherwise the user is asked via waitForPermission. This is what makes
+   * allow-task / allow-conversation distinct from allow-once.
+   */
+  private async resolvePermissionForRun(
+    request: PermissionRequest,
+    run: AgentRun,
+    controller: AbortController,
+  ): Promise<string> {
+    const task = run.taskId ? this.tasks.get(run.taskId) : undefined;
+    const scopeKeys = [`conversation:${run.conversationId}`];
+    if (task) scopeKeys.push(`task:${task.id}`);
+    const autoAllowed = scopeKeys.some((key) => this.hasScopedGrant(key, request));
+    if (autoAllowed) {
+      request.status = "Allowed";
+      request.resolvedAt = now();
+      this.store.saveProjection(`permission:${request.id}`, 1, request);
+      this.emit({
+        type: "approval.resolved",
+        aggregateId: request.id,
+        conversationId: run.conversationId,
+        runId: run.id,
+        source: "ui",
+        payload: { requestId: request.id, decision: "allow-task", autoApproved: true },
+      });
+      return "allow-task";
+    }
+    return this.waitForPermission(request.id, controller);
   }
 
   private waitForPermission(requestId: string, controller: AbortController): Promise<string> {
@@ -1655,7 +1752,7 @@ export class AgentFlowApplication {
                 `Adapter ${adapter.id} cannot resolve approval requests; run stopped safely`,
               );
             }
-            const decision = await this.waitForPermission(request.id, controller);
+            const decision = await this.resolvePermissionForRun(request, run, controller);
             await adapter.resolveApproval(
               handle!,
               {
@@ -2112,6 +2209,19 @@ export class AgentFlowApplication {
     request.resolvedAt = now();
     this.store.saveProjection(`permission:${request.id}`, 1, request);
     const run = this.runs.get(request.runId);
+    // Record scoped grants so an identical later request does not re-prompt.
+    // allow-task remembers the approval for this run's task; allow-conversation
+    // remembers it for the whole conversation. add-project-rule is treated as
+    // a conversation-scoped grant for now (a durable project rule store is a
+    // future enhancement). allow-once intentionally records nothing.
+    if (!decision.startsWith("deny") && run) {
+      if (decision === "allow-task") {
+        const task = run.taskId ? this.tasks.get(run.taskId) : undefined;
+        if (task) this.recordScopedGrant(`task:${task.id}`, request);
+      } else if (decision === "allow-conversation" || decision === "add-project-rule") {
+        this.recordScopedGrant(`conversation:${run.conversationId}`, request);
+      }
+    }
     this.emit({
       type: "approval.resolved",
       aggregateId: input.requestId,
@@ -2473,7 +2583,7 @@ export class AgentFlowApplication {
                 `Adapter ${adapter.id} cannot resolve approval requests; worker run stopped safely`,
               );
             }
-            const decision = await this.waitForPermission(request.id, runController);
+            const decision = await this.resolvePermissionForRun(request, run, runController);
             await adapter.resolveApproval(
               sessionHandle,
               {
@@ -3364,7 +3474,7 @@ export class AgentFlowApplication {
           );
         })
         .map((run) => run.id),
-      settings: this.getSettings(),
+      settings: this.getSettingsForRenderer(),
       models: [...this.models.values()],
     };
   }
