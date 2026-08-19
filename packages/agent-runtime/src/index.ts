@@ -64,9 +64,22 @@ function matchesPath(value: string, pattern: string): boolean {
   return new RegExp(`^${normalizedPattern}$`).test(candidate);
 }
 
+// A literal (non-glob) forbidden rule must block that name at any depth --
+// ".env" has to catch "server/.env", not just a file literally named ".env"
+// at the root -- or a worker could dodge the block by nesting one directory
+// deeper. matchesPath()'s regex fallback anchors to the full path, so it
+// only catches the root-level case; check path segments too for rules that
+// don't already use glob syntax.
+function matchesForbidden(value: string, pattern: string): boolean {
+  if (pattern.includes("*")) return matchesPath(value, pattern);
+  const candidate = normalizePath(value);
+  const rule = normalizePath(pattern);
+  return candidate === rule || candidate.split("/").includes(rule);
+}
+
 export function checkScope(scope: WorkerScope, action: "read" | "write", filePath: string): ScopeDecision {
   const path = normalizePath(filePath);
-  if (scope.forbiddenPaths.some((rule) => matchesPath(path, rule))) return { allowed: false, path, reason: "path is forbidden by task scope" };
+  if (scope.forbiddenPaths.some((rule) => matchesForbidden(path, rule))) return { allowed: false, path, reason: "path is forbidden by task scope" };
   const rules = action === "read" ? scope.allowedReadPaths : scope.allowedWritePaths;
   return rules.some((rule) => matchesPath(path, rule))
     ? { allowed: true, path }

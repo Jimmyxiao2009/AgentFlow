@@ -11,6 +11,17 @@ describe("agent runtime safety contracts", () => {
     expect(checkScope({ taskId: "t", allowedReadPaths: ["**/*"], allowedWritePaths: ["src/**/*.ts"], forbiddenPaths: [".git/**"], objective: "patch" }, "write", ".git/config").allowed).toBe(false);
     expect(evaluateOperation({ command: "npm install", workingDirectory: ".", capability, scope: { taskId: "t", allowedReadPaths: ["**/*"], allowedWritePaths: ["src/**/*.ts"], forbiddenPaths: [], objective: "patch" } }).outcome).toBe("deny");
   });
+  it("blocks a literal forbidden name at any depth, not just at the root", () => {
+    const scope = {
+      taskId: "t",
+      allowedReadPaths: ["**/*"],
+      allowedWritePaths: ["**/*"],
+      forbiddenPaths: [".env"],
+      objective: "patch",
+    };
+    expect(checkScope(scope, "write", ".env").allowed).toBe(false);
+    expect(checkScope(scope, "write", "server/.env").allowed).toBe(false);
+  });
   it("keeps architecture changes behind proposal/barrier", () => {
     const barrier = new EpochBarrier(17);
     barrier.startWorker("w1");
