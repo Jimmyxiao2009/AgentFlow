@@ -150,7 +150,49 @@
 
 - **问题8（产品方向）**：生产路径仍是 Vercel AI SDK 直连 OpenAI 兼容端点 + 手输 API key，与主提示"复用 CLI 订阅、绝不存凭证"的非协商边界方向性偏差。Codex/Claude/Grok/OpenCode CLI 适配器尚未接线（`adapter-maf` 为孤儿）。完整切换到 CLI 适配器需要已安装的 CLI 与真实账号，按文档属 opt-in 手动验收范围，本轮未做。明文 apiKey 仍在 SQLite projection（运行时自有，未暴露给渲染层）；彻底移除属 provider 架构重构。
 - **agent-runtime / adapter-maf 孤儿包去留**：删除整包需用户明确指示（已在本会话权限层拒绝自动删除），保留为待决项。
-- **审批决策语义**：`allow-task`/`allow-conversation`/`add-project-rule` 与 `allow-once` 等价（未实现差异化持久化规则）—— 功能性缺陷，非安全缺陷，待后续迭代。
 - **`@tanstack/react-query` 死依赖**：零 import，未移除（移除属依赖清理，低风险但需确认无动态引用）。
 - **`typecheck:ui` 无 `--strict`**：UI 隐式 any 未启用严格检查。
 - **三套 glob 实现统一**：仅修复了 live 路径（workflow-engine）的边界 bug；agent-runtime 的正确实现随孤儿包保留，未合并。
+- **CSP release 精简**：`tauri.conf.json` 的 `connect-src` 在 release 仍含 dev-server 源（127.0.0.1:1420），属低危冗余面，需 build-mode 区分 CSP，未做。
+- **UI 键盘可达性 / 命令面板焦点管理**：多处 `<div onClick>` 无 role/tabIndex/onKeyDown；命令面板无焦点陷阱与方向键导航。属 a11y 缺陷，未在本轮处理。
+
+## 八、第二轮子 agent 代码审计（2026-08-20，四路并行）
+
+排子 agent 扫描仓库（安全/权限、正确性/状态机、UI/UX、Rust/IPC），发现并修复：
+
+**安全/权限**
+- ✅ `getSettings()`/`status()` 把明文 apiKey 经 live bridge 回传渲染层（仅审计日志/localStorage 此前已脱敏）。新增 `getSettingsForRenderer()` 脱敏，用于 `status()` 与 `settings.get`（+回归断言）。
+- ✅ 审批决策语义：实现 `allow-task`/`allow-conversation`/`add-project-rule` 的 scope 记忆（`resolvePermissionForRun` 自动放行同 scope 同指纹请求；`add-project-rule` 暂作 conversation scope）。
+- 已知遗留：`assertNoSilentEscalation` 仍是死代码（route() 不改写 permissionProfile，无 live 升级路径，guard 暂保留为未来钩子）；`AGENTFLOW_RUNTIME_TOKEN` 仍是空头承诺（私有管道，风险有限）。
+
+**正确性/状态机**
+- ✅ `patchset.created`（runTask + orchestrator）、`review.requested`、`review.completed` 缺 `conversationId` —— 时间线不可见。四处补齐（同问题1类别，首轮只修了 recovered/integration）。
+- ✅ `integrate` Conflict 不记 `failureReason`、Failed 不转 Failed（卡在 IntegrationReady）。现在记录原因并按状态转移。
+- ✅ `runValidation` 失败路径不删持久化 lease 行 —— 现补 `deleteTaskLease`。
+- ✅ `approve-and-run` 空 flip 到 Running（无 run 启动，卡死）—— 改为只到 Ready。
+- ✅ routing `fallbackAttempts` 用 `slice(0,-1)` 误报 —— 改为按 selected index 切片（+断言）。
+- 已知遗留：`releaseExpired` 仍无 live 调用（zombie lease 由 restart 路径回收；Running 回收逻辑已就位但无定时器触发）。
+
+**UI/UX**
+- ✅ run 结束（completed/cancelled/failed）后流式消息光标永久闪烁 —— `finalizeStreamingMessage` 翻 streaming:false。
+- ✅ `message.delta` 未按会话隔离 + `selectConversation` 未清 streamMessageRef —— 跨会话串话。已修。
+- ✅ 成功 run 也设 `failedRunId` → 误导 Retry 按钮 —— 仅 cancelled/failed 设。
+- ✅ 22 处 catch 直接取 `error.message`（非 Error 会二次抛出吞错）—— 统一走 `errorMessage()`。
+- ✅ VirtualTimeline 切会话不重置 stick-to-bottom —— 现按首消息 id 变化重置。
+- ✅ InspectorPanel/Composer 的 `React.memo` 被内联回调击穿（拖拽监听每 token 重挂）—— `setSetting`/`onResizeInspectorWidth` memoize。
+- ✅ InspectorPanel Agents tab 用数组 index 作 key —— 改用 run name。
+- 已知遗留：`relativeTime` 不刷新（LOW）、命令面板焦点管理、键盘可达性（见第七节）、DiffViewer 未 memo（LOW）。
+
+**Rust/IPC**
+- ✅ reader 线程死而 child 活时永不恢复（每请求 60s 超时）—— `reader_alive` AtomicBool + RAII guard，`ensure_sidecar` 检测到则 kill child 走重启路径。
+- ✅ Unix 关闭时 debug 子进程孤儿化（SIGKILL 定时器 unref 被 process.exit 取消）—— 新增 `killAllNow()` 同步强杀，`close()` 改用之。
+- ✅ `this.models` 数据竞争（probeProfiles 起始 clear，并发 run 读到空 map）—— local-then-atomic-swap。
+- ✅ `bridge_request` 超时泄漏 responses map 的 sender —— 超时后 remove。
+- ✅ `runtime.ready`/`runtime.shutdown` 生命周期消息被 reader 静默丢弃 —— 转发为 lifecycle 事件。
+- 已知遗留：CSP release 精简（见第七节）。
+
+**工程**
+- ✅ `security:scan` 扫描整个 `.pnpm-store`/`.kun-canvas`（数万文件）CI 超时 —— 排除之；跳过 `.test/.spec` 避免假阳性。
+- ✅ 全仓 `prettier --write`，`format:check` 通过。
+
+最终门槛：typecheck ✅、ESLint ✅、vitest 73/73 ✅（首轮 63 → 73，新增 10 条对抗性回归）、security:scan ✅、format:check ✅、cargo check ✅。
