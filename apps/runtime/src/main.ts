@@ -198,12 +198,10 @@ input.on("line", (line) => {
   pending.add(request);
   void request.finally(() => pending.delete(request));
 });
-input.on("close", async () => {
-  await Promise.all(pending);
-  application.close();
-});
-
-// Graceful shutdown on SIGTERM / SIGINT: drain in-flight requests before exiting.
+// Graceful shutdown on SIGTERM / SIGINT (or stdin close): drain in-flight
+// requests before exiting. The shared `shuttingDown` guard coordinates all
+// three triggers so close() runs exactly once even when a signal arrives
+// while stdin is closing (or vice versa).
 let shuttingDown = false;
 const shutdown = async (signal: string) => {
   if (shuttingDown) return;
@@ -213,5 +211,6 @@ const shutdown = async (signal: string) => {
   application.close();
   process.exit(0);
 };
+input.on("close", () => void shutdown("stdin-close"));
 process.on("SIGTERM", () => void shutdown("SIGTERM"));
 process.on("SIGINT", () => void shutdown("SIGINT"));

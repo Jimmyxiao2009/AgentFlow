@@ -3368,8 +3368,25 @@ export class AgentFlowApplication {
       models: [...this.models.values()],
     };
   }
+  private closed = false;
   close(): void {
-    this.store.close();
+    // Tolerate double-close: both the stdin-close and the SIGTERM/SIGINT
+    // shutdown paths can call close() (e.g. a signal arriving after stdin
+    // closed), and better-sqlite3 throws on a second close(). The flag makes
+    // the second call a no-op instead of an unhandled error in shutdown.
+    if (this.closed) return;
+    this.closed = true;
+    // Abort any in-flight runs and cancel debug subprocesses so shutdown does
+    // not orphan provider/debug child processes. The ProcessSupervisor kills
+    // the whole process tree per platform (taskkill /T on Windows, process
+    // group signal elsewhere).
+    for (const controller of this.activeRuns.values()) controller.abort();
+    this.debugProcesses.stopAll();
+    try {
+      this.store.close();
+    } catch {
+      /* database may already be closed during a race between shutdown paths */
+    }
   }
 }
 
