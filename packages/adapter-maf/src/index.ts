@@ -32,19 +32,6 @@ export interface MafAdapterOptions {
   providers: MafProviderConfig[];
 }
 
-const sleep = (ms: number, signal: AbortSignal) =>
-  new Promise<void>((resolve, reject) => {
-    const timer = setTimeout(resolve, ms);
-    signal.addEventListener(
-      "abort",
-      () => {
-        clearTimeout(timer);
-        reject(signal.reason ?? new Error("Operation aborted"));
-      },
-      { once: true },
-    );
-  });
-
 /**
  * Microsoft Agent Framework adapter.
  *
@@ -131,7 +118,9 @@ export class MafAdapter implements AgentAdapter {
     signal: AbortSignal,
   ): Promise<AgentSessionHandle> {
     throwIfAborted(signal);
-    const provider = this.resolveProvider(options.modelId);
+    // Resolve eagerly so a missing/misconfigured model fails at session
+    // start rather than silently on the first run() call.
+    this.resolveProvider(options.modelId);
     return {
       id: options.sessionId,
       nativeSessionId: `maf-${options.sessionId}`,

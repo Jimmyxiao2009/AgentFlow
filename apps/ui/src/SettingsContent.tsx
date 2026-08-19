@@ -16,20 +16,11 @@ import {
 } from "lucide-react";
 import { t } from "@agentflow/localization";
 import { MODEL_PRESETS } from "./modelPresets";
-import type {
-  SettingsContentProps,
-  UiSettings,
-  SettingsRuntimeData,
-  RuntimeAdapterProfile,
-  RuntimeModel,
-} from "./types";
+import type { SettingsContentProps, UiSettings } from "./types";
 import {
   btnGhost,
   btnPrimary,
   btnDanger,
-  modeOptions,
-  permissionOptions,
-  settingsSections,
   permissionProfiles,
   safetyLocks,
   accentColors,
@@ -37,8 +28,6 @@ import {
 import {
   Dot,
   Badge,
-  Menu,
-  MenuItem,
   Toggle,
   Segmented,
   StaticField,
@@ -247,30 +236,6 @@ export const SettingsContent = React.memo(function SettingsContent({
                 ? "Requires login"
                 : "Unavailable",
         }))
-    : [];
-  const runtimeModelGroups = runtimeData
-    ? Object.entries<Array<{ name: string; tag?: string; state: string }>>(
-        (runtimeData.models || []).reduce(
-          (groups, model) => {
-            const group = groups[model.adapterId] || [];
-            group.push({
-              name: model.name,
-              tag: model.cliDefault
-                ? "CLI Default"
-                : model.verified
-                  ? undefined
-                  : t(locale, "Model.ManualUnverified"),
-              state: model.verified ? "Available" : "Not installed",
-            });
-            groups[model.adapterId] = group;
-            return groups;
-          },
-          {} as Record<string, Array<{ name: string; tag?: string; state: string }>>,
-        ),
-      ).map(([adapterId, models]) => ({
-        adapter: adapterNames[adapterId] || adapterId,
-        models,
-      }))
     : [];
   const routingCandidates = runtimeData
     ? (runtimeData.models || [])

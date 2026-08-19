@@ -1,31 +1,19 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ChevronDown,
   ChevronRight,
-  GitBranch,
   GitCommit,
   GitMerge,
   FileDiff,
   AlertTriangle,
   Circle,
   ListTree,
-  Workflow,
-  Route,
-  Shield,
-  Bot,
-  Cpu,
-  Check,
   ClipboardCheck,
-  RefreshCw,
-  Play,
-  Square,
-  ExternalLink,
 } from "lucide-react";
 import { t } from "@agentflow/localization";
 import type { InspectorPanelProps } from "./types";
-import { btnGhost, btnPrimary, btnDanger } from "./constants";
-import { Dot, Badge, Menu, MenuItem, Toggle, Segmented, StaticField, SettingsRow, SettingsGroup } from "./ui-primitives";
-import { relativeTime, stateTone, localizedStatus, permissionProfileLabel, diffFileState } from "./utils";
+import { btnGhost, btnPrimary } from "./constants";
+import { Dot, Badge } from "./ui-primitives";
+import { permissionProfileLabel, diffFileState } from "./utils";
 import { DiffViewer } from "./DiffViewer";
 
 export const InspectorPanel = React.memo(function InspectorPanel({

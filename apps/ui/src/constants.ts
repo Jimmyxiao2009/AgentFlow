@@ -1,4 +1,3 @@
-import type { Locale } from "@agentflow/localization";
 import {
   Settings,
   Palette,

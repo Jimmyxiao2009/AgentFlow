@@ -1,7 +1,6 @@
 import React from "react";
 import { t, type Locale } from "@agentflow/localization";
 import type { PermissionDimensionsInput } from "./types";
-import { btnGhost } from "./constants";
 
 export const defaultCustomPermissionDimensions = {
   readPaths: ["**/*"],

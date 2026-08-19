@@ -2,130 +2,48 @@
 
 // AgentFlow's workspace is intentionally kept in the renderer's TypeScript boundary.
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   createTauriTransport,
   createTypedBridge,
   replayRuntimeTimeline,
   runtimeEventToTimelineActivity,
 } from "@agentflow/desktop-bridge";
-import { t, type Locale } from "@agentflow/localization";
-import { agentFlowAccentColors } from "@agentflow/design-system";
+import { t } from "@agentflow/localization";
 import { lookupModelMeta } from "./modelPresets";
-import {
-  Search,
-  Plus,
-  GitBranch,
-  Settings,
-  ChevronDown,
-  ChevronRight,
-  AlertTriangle,
-  Circle,
-  GitCommit,
-  FileDiff,
-  Shield,
-  Bot,
-  ListTree,
-  GitMerge,
-  Send,
-  Paperclip,
-  PanelRightClose,
-  PanelRightOpen,
-  Sparkles,
-  ClipboardCheck,
-  Cpu,
-  Check,
-  FolderGit2,
-  X,
-  Palette,
-  Globe,
-  KeyRound,
-  Workflow,
-  Route,
-  Lock,
-  Bell,
-  HardDrive,
-  Accessibility,
-  Wrench,
-  Info,
-  FolderOpen,
-  RefreshCw,
-  Trash2,
-  GripVertical,
-  Copy,
-  Pin,
-  Archive,
-} from "lucide-react";
+import { PanelRightClose, PanelRightOpen, X, Bell, Pin, Archive } from "lucide-react";
 import type {
-  PermissionDimensionsInput,
   WorkflowPayload,
   RuntimeStatus,
   TimelineMessage,
-  UiSettings,
   BridgeApi,
-  ComposerProps,
-  ConversationSidebarProps,
-  VirtualTimelineProps,
-  InspectorPanelProps,
-  SettingsPanelProps,
-  PermissionRequest,
 } from "./types";
 import {
   modeToRuntimeMode,
   parseSlashCommand,
   permissionOptions,
   settingsSections,
-  permissionProfiles,
-  safetyLocks,
   accentColors,
   btnGhost,
-  btnPrimary,
-  btnDanger,
 } from "./constants";
 import {
-  defaultCustomPermissionDimensions,
-  normalizeCustomPermissionDimensions,
   parseEscalationRequest,
   stripEscalationMarker,
   relativeTime,
-  permissionProfileLabel,
   runtimeSettingsToUi,
-  detectSystemLocale,
   resolveUiLocale,
   uiSettingsToRuntime,
-  diffFileState,
-  diffLanguage,
-  renderSyntaxHighlightedCode,
-  renderDiffLine,
-  parseSideBySideDiff,
-  summarizeActivityGroup,
-  stateTone,
-  localizedStatus,
 } from "./utils";
-import {
-  Dot,
-  Badge,
-  Menu,
-  MenuItem,
-  Toggle,
-  Segmented,
-  StaticField,
-  SettingsRow,
-  SettingsGroup,
-  PermissionListInput,
-} from "./ui-primitives";
 import {
   PlanApprovalCard,
   PermissionRequestCard,
   EscalationRequestCard,
 } from "./cards";
-import { DiffViewer } from "./DiffViewer";
 import { VirtualTimeline } from "./VirtualTimeline";
 import { Composer } from "./Composer";
 import { ConversationSidebar } from "./ConversationSidebar";
 import { InspectorPanel } from "./InspectorPanel";
 import { SettingsPanel } from "./SettingsPanel";
-import { SettingsContent } from "./SettingsContent";
 import { defaultUiSettings } from "./defaultUiSettings";
 
 export default function AgentFlowWorkspace() {
