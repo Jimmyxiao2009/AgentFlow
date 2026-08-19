@@ -440,9 +440,21 @@ export class WorkflowOrchestrator {
       }
       return normalized === rule;
     };
+    // Forbidden rules must catch a literal name at any depth (".env" has to
+    // block "server/.env", not just a file literally named ".env" at the
+    // repository root) — a plain equality check like pathMatches() uses for
+    // allowedWritePaths would let a worker dodge the block by nesting the
+    // file one directory deeper. Glob rules already handle this correctly,
+    // so only the literal fallback needs the broader, segment-aware check.
+    const pathForbidden = (file: string, pattern: string): boolean => {
+      const normalized = file.replaceAll("\\", "/");
+      const rule = pattern.replaceAll("\\", "/");
+      if (rule.includes("*") || rule.endsWith("/**")) return pathMatches(file, pattern);
+      return normalized.split("/").includes(rule);
+    };
     const outOfContract = diff.files.find(
       (file) =>
-        execution.task.contract.forbiddenPaths.some((rule) => pathMatches(file, rule)) ||
+        execution.task.contract.forbiddenPaths.some((rule) => pathForbidden(file, rule)) ||
         !execution.task.contract.allowedWritePaths.some((rule) => pathMatches(file, rule)),
     );
     if (outOfContract)

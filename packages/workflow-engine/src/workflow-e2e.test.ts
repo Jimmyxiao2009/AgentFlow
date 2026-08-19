@@ -175,4 +175,110 @@ describe("isolated worker vertical slice", () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it("blocks a forbidden path even when it is nested under an allowed directory", async () => {
+    const root = mkdtempSync(join(tmpdir(), "agentflow-forbidden-nested-"));
+    const repository = join(root, "repo");
+    const dataRoot = join(root, "data");
+    mkdirSync(repository, { recursive: true });
+    mkdirSync(dataRoot, { recursive: true });
+    writeFileSync(join(repository, "README.md"), "fixture\n");
+    const gitRun = (args: string[]) =>
+      execFileSync("git", args, { cwd: repository, stdio: "ignore" });
+    gitRun(["init", "-q"]);
+    gitRun(["config", "user.name", "AgentFlow Fixture"]);
+    gitRun(["config", "user.email", "fixture@example.invalid"]);
+    gitRun(["add", "README.md"]);
+    gitRun(["commit", "-qm", "fixture"]);
+    const base = (await git(repository, ["rev-parse", "HEAD"])).stdout.trim();
+    const manager = new WorktreeManager({ dataRoot });
+    const task: Task = {
+      id: "task-forbidden",
+      changeRequestId: "cr-forbidden",
+      key: "TASK-001",
+      title: "Fixture write",
+      state: "Running",
+      contract: {
+        objective: "write fixture",
+        dependencies: [],
+        allowedReadPaths: ["**/*"],
+        allowedWritePaths: ["**/*"],
+        forbiddenPaths: [".env"],
+        requiredCapabilities: ["worktree"],
+        acceptanceCriteria: ["file exists"],
+        requiredValidationCommands: [],
+        preferredExecutorRoles: ["Worker"],
+        riskLevel: "Low",
+      },
+      dependencyIds: [],
+      patchSetIds: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    const run: AgentRun = {
+      id: "run-forbidden",
+      sessionId: "session-forbidden",
+      conversationId: "conversation-forbidden",
+      taskId: task.id,
+      role: "Worker",
+      state: "Running",
+      attempt: 1,
+    };
+    const session: AgentSession = {
+      id: "session-forbidden",
+      conversationId: run.conversationId,
+      taskId: task.id,
+      adapterId: "fake",
+      role: "Worker",
+      state: "Running",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    const workspace = await manager.create(repository, {
+      id: "workspace-forbidden",
+      projectId: "project-forbidden",
+      changeRequestId: "cr-forbidden",
+      taskId: task.id,
+      branch: "agentflow/fixture-forbidden",
+      baseCommit: base,
+      taskKey: task.key,
+      runId: run.id,
+    });
+    // A worker nesting the forbidden filename one directory deeper must not
+    // slip past the ".env" rule just because it isn't the literal root path.
+    const adapter = new FakeAdapter({
+      delayMs: 0,
+      writeFiles: [{ path: "server/.env", content: "SECRET=leaked\n" }],
+    });
+    await adapter.startSession(
+      {
+        sessionId: session.id,
+        conversationId: session.conversationId,
+        taskId: task.id,
+        role: "Worker",
+        workspacePath: workspace.path,
+        profile: { id: "fixture", name: "Fake", adapterId: "fake", status: "Ready" },
+        permissionProfile: "Workspace Write",
+      },
+      new AbortController().signal,
+    );
+    const orchestrator = new WorkflowOrchestrator(manager, { append: () => {} });
+    try {
+      await expect(
+        orchestrator.execute(
+          adapter,
+          { task, run, session, workspace },
+          {
+            prompt: task.contract.objective,
+            mode: "Implement",
+            permissionProfile: "Workspace Write",
+          },
+          new AbortController().signal,
+        ),
+      ).rejects.toThrow("PatchSet changed a path outside the task contract: server/.env");
+    } finally {
+      await manager.remove(repository, workspace.path);
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
 });
