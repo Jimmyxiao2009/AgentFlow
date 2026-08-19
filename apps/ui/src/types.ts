@@ -6,15 +6,94 @@ export type WorkflowPayload = Record<string, unknown> & {
   text?: string;
   permissionRequest?: Record<string, unknown>;
 };
+export type PatchSetSummary = {
+  id: string;
+  taskId: string;
+  sequence: number;
+  changedFiles: string[];
+  diffArtifactId: string;
+  resultCommit: string;
+  reviewState: string;
+  baseCommit?: string;
+};
+export type ReviewSummary = {
+  id: string;
+  taskId: string;
+  verdict: string;
+  independent?: boolean;
+};
+export type FindingSummary = {
+  id: string;
+  severity: string;
+  category?: string;
+  message: string;
+  file?: string;
+  line?: number;
+};
+export type ChangeRequestSummary = {
+  id: string;
+  state: string;
+  specificationRevisionId?: string;
+  integrationBranch?: string;
+  baseCommit?: string;
+};
+export type ProjectSummary = {
+  id: string;
+  repositoryPath: string;
+  debugCommand?: string;
+  defaultBranch?: string;
+};
 export type RuntimeStatus = Record<string, unknown> & {
   settings?: Record<string, unknown>;
-  tasks?: Array<{ id: string; state?: string }>;
+  tasks?: Array<{ id: string; key: string; title: string; state?: string; dependencyIds?: string[] }>;
   conversations?: Array<{ id: string }>;
-  runs?: Array<{ id: string; conversationId?: string; state?: string }>;
-  events?: Array<{ conversationId?: string }>;
-  projects?: Array<{ id: string; defaultBranch?: string }>;
+  runs?: Array<{ id: string; conversationId?: string; taskId?: string; role?: string; state?: string; completedAt?: string }>;
+  events?: Array<{ conversationId?: string; changeRequestId?: string; type?: string; payload?: unknown }>;
+  projects?: ProjectSummary[];
   permissions?: Array<{ status?: string }>;
   resumeAvailableRunIds?: string[];
+  patchSets?: PatchSetSummary[];
+  reviews?: ReviewSummary[];
+  findings?: FindingSummary[];
+  changeRequests?: ChangeRequestSummary[];
+  workspaces?: Array<{ taskId: string; path?: string }>;
+  validations?: Array<{ taskId: string; status?: string }>;
+};
+export type TaskDisplayItem = {
+  taskId: string;
+  id: string;
+  title: string;
+  dependencies: string[];
+  assignedAgent?: string;
+  worktree?: string;
+  validation?: string;
+  review?: string;
+  status: string;
+  tone: string;
+};
+export type RunDisplayItem = {
+  name: string;
+  role: string;
+  detail: string;
+  time: string;
+  tone: string;
+};
+export type RoutingDecisionSummary = {
+  matchedRule?: string;
+  reason?: string;
+  selected?: { adapterId: string; profileId?: string };
+  rejectedCandidates?: string[];
+};
+export type RepositoryStatusSummary = {
+  branch: string;
+  head: string;
+  changedFiles: string[];
+  unifiedDiff?: string;
+};
+export type SettingsSection = {
+  id: string;
+  key: string;
+  icon: React.ElementType;
 };
 export type TimelineMessage = {
   id: string;
@@ -261,18 +340,18 @@ export type InspectorPanelProps = {
   workflowPhase: string;
   workflowProgress: number;
   completedTaskCount: number;
-  displayTasks: any[];
-  displayReviews: any[];
+  displayTasks: TaskDisplayItem[];
+  displayReviews: ReviewSummary[];
   currentModel: { id: string; label: string };
   effectivePermission: { id: string; label: string };
-  currentChangeRequest: any;
-  currentRoutingDecision: any;
-  repositoryStatus: any;
+  currentChangeRequest: ChangeRequestSummary | undefined;
+  currentRoutingDecision: RoutingDecisionSummary | undefined;
+  repositoryStatus: RepositoryStatusSummary | null;
   runtimeData: RuntimeStatus | null;
   runReadyTasks: () => Promise<void>;
   runTask: (taskId: string) => Promise<void>;
-  displayRuns: any[];
-  displayPatchSets: any[];
+  displayRuns: RunDisplayItem[];
+  displayPatchSets: PatchSetSummary[];
   artifactContent: { content?: string } | null;
   openArtifact: (artifactId: string) => Promise<void>;
   openArtifactId: string | null;
@@ -283,15 +362,15 @@ export type InspectorPanelProps = {
   setArtifactSearch: (value: string) => void;
   artifactViewMode: string;
   setArtifactViewMode: (value: string) => void;
-  displayFindings: any[];
+  displayFindings: FindingSummary[];
   sendFindingsToFixer: () => void;
   blockingFindingsCount: number;
-  patchSetsAwaitingReview: any[];
+  patchSetsAwaitingReview: PatchSetSummary[];
   approvePatchSet: (patchSetId: string) => Promise<void>;
   rejectPatchSet: (patchSetId: string) => void;
   width: number;
   onResizeWidth: (value: number) => void;
-  currentProject: any;
+  currentProject: ProjectSummary | undefined;
   updateDebugCommand: (debugCommand: string) => Promise<void>;
   debugRunning: boolean;
   startDebug: () => Promise<void>;
@@ -304,11 +383,11 @@ export type SettingsPanelProps = {
   locale: Locale;
   settingsSearch: string;
   setSettingsSearch: (value: string) => void;
-  filteredSections: any[];
+  filteredSections: SettingsSection[];
   settingsSection: string;
   setSettingsSection: (value: string) => void;
-  sectionLabel: (section: any) => string;
-  activeSectionMeta: any;
+  sectionLabel: (section: SettingsSection) => string;
+  activeSectionMeta: SettingsSection | undefined;
   settings: UiSettings;
   setSetting: (key: keyof UiSettings, value: unknown) => void;
   runtimeData: RuntimeStatus | null;
