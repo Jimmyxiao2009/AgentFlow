@@ -2261,12 +2261,17 @@ export class AgentFlowApplication {
       throw new Error(`Adapter ${adapter.id} does not support native session resume`);
     if (!profile || profile.adapterId !== adapterId || profile.status !== "Ready")
       throw new Error(`No ready authentication profile is configured for adapter: ${adapterId}`);
-    if (["PatchProduced", "ValidationFailed", "ReviewRequested"].includes(task.state)) {
-      task = this.scheduler.complete(task.id, "Failed");
+    // An explicit re-run may reset a task that has produced a PatchSet or whose
+    // validation failed, so it can be executed again. Do NOT force-complete a
+    // task in ReviewRequested — an independent review run owns it at that point,
+    // and forcing it to Failed would later make the review's complete("Approved")
+    // throw an illegal transition. Let the review finish (or be stopped) first.
+    if (["PatchProduced", "ValidationFailed"].includes(task.state)) {
+      task = this.scheduler.complete(task.id, "Failed", runId);
       this.saveTask(task);
     }
     if (["ChangesRequested", "Failed", "Cancelled"].includes(task.state)) {
-      task = this.scheduler.requeue(task.id);
+      task = this.scheduler.requeue(task.id, runId);
       this.saveTask(task);
     }
     if (changeRequest.state === "IntegrationReady") {

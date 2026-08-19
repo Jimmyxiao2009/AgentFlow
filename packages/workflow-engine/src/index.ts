@@ -111,18 +111,26 @@ export class TaskDagScheduler {
       }
     return released;
   }
-  release(taskId: string, next: "Ready" | "Failed"): Task {
+  release(taskId: string, next: "Ready" | "Failed", runId?: string): Task {
     const task = this.tasks.get(taskId);
     if (!task || task.state !== "Leased") throw new Error(`Task ${taskId} is not leased`);
+    // When a caller identifies itself, verify it owns the lease before
+    // releasing — prevents a concurrent run from releasing another run's task.
+    if (runId && task.lease?.runId !== runId)
+      throw new Error("Task lease is owned by another run");
     task.state = transitionTask(task.state, next);
     task.lease = undefined;
     this.leases.delete(taskId);
     return structuredClone(task);
   }
-  requeue(taskId: string): Task {
+  requeue(taskId: string, runId?: string): Task {
     const task = this.tasks.get(taskId);
     if (!task || !["ChangesRequested", "Failed", "Cancelled"].includes(task.state))
       throw new Error(`Task ${taskId} is not retryable`);
+    // A retryable task is no longer leased, but if a caller passes runId we
+    // still sanity-check that the task is not actively owned by a live lease.
+    if (runId && this.leases.has(taskId))
+      throw new Error(`Task ${taskId} is still leased`);
     task.state = transitionTask(task.state, "Ready");
     return structuredClone(task);
   }
@@ -138,9 +146,16 @@ export class TaskDagScheduler {
       | "Failed"
       | "Cancelled"
     >,
+    runId?: string,
   ): Task {
     const task = this.tasks.get(taskId);
     if (!task) throw new Error(`Unknown task ${taskId}`);
+    // When a caller identifies itself, verify it owns the task's lease before
+    // completing it — a concurrent run (or a stale retry) must not be able to
+    // force-complete a task that an active run owns, which would corrupt the
+    // state machine for the owning run's later transition.
+    if (runId && task.lease && task.lease.runId !== runId)
+      throw new Error("Task is owned by another run; cannot complete");
     task.state = transitionTask(task.state, next);
     this.leases.delete(taskId);
     task.lease = undefined;

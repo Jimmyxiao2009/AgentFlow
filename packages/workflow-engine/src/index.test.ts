@@ -36,6 +36,41 @@ describe("workflow engine", () => {
     expect(claimed?.lease?.runId).toBe("run");
     expect(() => scheduler.claimReady("another")).not.toThrow();
   });
+  it("rejects a cross-run complete that would steal a leased task", () => {
+    const scheduler = new TaskDagScheduler();
+    scheduler.add({
+      id: "owner-task",
+      changeRequestId: "cr",
+      key: "TASK-001",
+      title: "A",
+      state: "Ready",
+      contract: {
+        objective: "",
+        dependencies: [],
+        allowedReadPaths: [],
+        allowedWritePaths: [],
+        forbiddenPaths: [],
+        requiredCapabilities: [],
+        acceptanceCriteria: [],
+        requiredValidationCommands: [],
+        preferredExecutorRoles: ["Worker"],
+        riskLevel: "Low",
+      },
+      dependencyIds: [],
+      patchSetIds: [],
+      createdAt: "2025-01-01T00:00:00.000Z",
+      updatedAt: "2025-01-01T00:00:00.000Z",
+    });
+    scheduler.claim("owner-task", "run-a", 60_000);
+    scheduler.start("owner-task", "run-a");
+    // A concurrent/stale run must not be able to force-complete the task that
+    // run-a owns — the previous complete() had no ownership check.
+    expect(() => scheduler.complete("owner-task", "Failed", "run-b")).toThrow(
+      "owned by another run",
+    );
+    // The owning run can still complete it.
+    expect(() => scheduler.complete("owner-task", "Failed", "run-a")).not.toThrow();
+  });
   it("does not allow a blocking validation failure to pass", () =>
     expect(() =>
       assertDeterministicGate([
